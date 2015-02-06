@@ -1,6 +1,6 @@
 # Omega Categories
 
-Formalisation of strict omega categories and the homotopy hypothesis
+Formalisation of strict ω-categories and the homotopy hypothesis
 in type theory, using coinduction
 
 
