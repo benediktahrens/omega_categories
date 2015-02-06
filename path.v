@@ -1,6 +1,7 @@
 Require Export Unicode.Utf8_core.
 Set Universes Polymorphic.
 Set Implicit Arguments.
+Add LoadPath "." as OmegaCategories.
 
 (* UIP_refl on Set is valid *)
 

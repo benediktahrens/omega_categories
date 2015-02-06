@@ -1,15 +1,9 @@
+Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import Omega Integers. 
-Require Import path GType omega_cat_examples truncation type_to_omega_cat omega_categories. 
+Require Import path GType omega_cat_examples  type_to_omega_cat omega_categories. 
 
 Set Implicit Arguments.
-
-CoInductive IsRigid (G : ωcat) : Type :=
-mkId : IsHSet (|G|) ->
-       (∀ (x y : |G|), IsRigid (G [x,y])) ->
-       IsRigid G.
-
-Definition Rigid_ωcat := {G: ωcat & IsRigid G}.
 
 Definition Univalent_ωcat := {G : ωcat & IsUnivalent G}.
 

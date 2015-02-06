@@ -1,3 +1,4 @@
+Add LoadPath "." as OmegaCategories.
 Require Import path.
 
 Inductive Pos : Type :=
