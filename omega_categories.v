@@ -246,11 +246,32 @@ CoInductive commutativeSquare  (A B C D : ωPreCat) {_transport : transport_eq D
                                    (G << U @@ x , U @@ y >>)) ->
                  @commutativeSquare A B C D _ U F V G.
 
+Arguments commutativeSquare : clear implicits.
+
+Definition transport_hom (A B A' B': ωPreCat) (eA:A = A') (eB:B = B') (f : A ==> B)
+           := transport (fun X => X ==> B') eA (transport (fun X => A ==> X) eB f).
+
+Definition transport_hom_concat (A B A' B' A'' B'': ωPreCat) (eA:A = A') (eB:B = B') (eA':A' = A'') (eB':B' = B'') (f : A ==> B) :
+  transport_hom eA' eB' (transport_hom eA eB f) = transport_hom (eA @ eA') (eB @ eB') f.
+  destruct eA, eB. reflexivity.
+Defined.
+  
+Definition path_commutativeSquare A B C D A' B' C' D'
+           (_transport : transport_eq D)
+           (U : A ==> B) (F : A ==> C) (V : C ==> D) (G : B ==> D) 
+           (eA:A = A') (eB:B = B') (eC:C = C') (eD:D = D')
+           (commS : commutativeSquare A' B' C' D' (eD # _transport)
+                                      (transport_hom eA eB U) (transport_hom eA eC F)
+                                      (transport_hom eC eD V) (transport_hom eB eD G)) :
+  commutativeSquare A B C D _transport U F V G.
+  destruct eA, eB, eC, eD. exact commS.
+Defined.
+
 
 (* morphism that preserves identity and composition *)
 
 CoInductive preservesCompo  (G H : ωPreCat) (f : G ==> H) (_transport : transport_eq H) : Type :=
-  mkPreservesCompo : (∀ (x y z : |G|), @commutativeSquare (G[x,y] ** G[y,z]) (G[x,z])
+  mkPreservesCompo : (∀ (x y z : |G|), commutativeSquare (G[x,y] ** G[y,z]) (G[x,z])
                           (H[f @@ x, f @@ y] ** H[f @@ y,f @@ z]) (H[f @@ x,f @@ z]) _
                           (@compo _ _ _ _) (prod_hom' (f << x,y >>) (f << y,z >>))
                           (@compo _ _ _ _) (f << x,z >>))
@@ -283,18 +304,44 @@ CoInductive compo_ωFunctor (G : ωPreCat) (_transport : transport_eq G) : Type 
 CoInductive associativity (G : ωPreCat) (_transport : transport_eq G) : Type := 
 mkAssociativity :
         (∀ (x y z t : |G|), 
-           @commutativeSquare (G [x,y] ** (G [y,z] ** G [z,t]))
-                              (G[x,z] ** G[z,t]) (G[x,y] ** G[y,t]) (G[x,t]) _
-                              (prod_hom1 (G[z,t]).1 (compo_here G _ _ _))
-                              (prod_hom' (GId (G[x,y]).1) (@compo _ _ _ _))
-                              (@compo _ _ _ _) (@compo _ _ _ _)) ->
+           commutativeSquare (G [x,y] ** (G [y,z] ** G [z,t]))
+                             (G[x,z] ** G[z,t]) (G[x,y] ** G[y,t]) (G[x,t]) _
+                             (prod_hom1 (G[z,t]).1 (compo_here G _ _ _))
+                             (prod_hom' (GId (G[x,y]).1) (@compo _ _ _ _))
+                             (@compo _ _ _ _) (@compo _ _ _ _)) ->
         (* the co-induction step *)
         (∀ (x y :   |G|), @associativity (G [x,y]) _) ->
         @associativity G _.
 
 
+(*** State the compatibility with canonical transport ***)
+
+CoInductive GHom_eq  (G G' : ωPreCat) (f g : G ==> G') : Type :=
+   mkGHom_eq_J : ∀ (fgeq : ∀ x, f @@ x = g @@ x),
+                   (∀ x y, GHom_eq (G [x, y])
+                                 (G' [g @@ x, g @@ y])
+                                 (transport_GHomL_eq_J (inverse (fgeq x)) °° 
+                                  (transport_GHomR_eq_J (fgeq y) °° 
+                                   (f << x , y >>))) 
+                                 (g << x , y >>)) ->
+                   GHom_eq _ _ f g.
+
+Definition transport_GHomL_compat G (x y z : |G|) (e : x = y) (_transport : transport_eq G) :=
+  GHom_eq _ _ (@transport_GHomL_eq_J G x y z e) (@transport_GHomL_eq_here G _ x y z e).
+
+Definition transport_GHomR_compat G (x y z : |G|) (e : x = y) (_transport : transport_eq G) :=
+  GHom_eq _ _ (@transport_GHomR_eq_J G z x y e) (@transport_GHomR_eq_here G _ x y z e).
+
+CoInductive transport_is_canonical (G:ωPreCat) (_transport : transport_eq G) : Type := 
+  mkTransport_compat :
+  (∀ {x y z : |G| } (e : x = y), transport_GHomL_compat z e _) ->
+  (∀ {z x y : |G| } (e : x = y), transport_GHomR_compat z e _) ->
+  (∀ {x y : |G| }, @transport_is_canonical (G[x,y]) _) ->
+  @transport_is_canonical G _.
+
 Class IsOmegaCategory (G : ωPreCat) := mkIsOmegaCategory {
   _transport : transport_eq G;
+  _transport_is_canonical : transport_is_canonical _transport;
   _idR : compoIdR G;
   _idL : compoIdL G;
   _assoc : @associativity G _transport;
@@ -326,8 +373,14 @@ Definition assocHom (G : ωcat) (x y : |G|) : @associativity (G.1 [x,y])
   destruct (@_assoc _ G.2) as [_ comp1]. exact (comp1 x y).
 Defined.
 
+Definition transport_is_canonical_hom (G:ωcat) (x y : |G|)
+            : @transport_is_canonical (G.1[x,y]) (transport_GHom_eq_hom _transport).
+  destruct (@_transport_is_canonical _ G.2). apply t1.
+Defined.
+  
 Definition hom'' (G:ωcat) (x y : |G|) : ωcat := 
-  (G.1[x,y]; {| _idR := idRHom G x y ;
+  (G.1[x,y]; {| _transport_is_canonical := transport_is_canonical_hom _ _ _;
+                _idR := idRHom G x y ;
                 _idL := idLHom G x y ; 
                 _assoc := assocHom G x y;
                 _compo_ωFunctor := compo_ωFunctorHom G x y|}).
@@ -335,12 +388,12 @@ Definition hom'' (G:ωcat) (x y : |G|) : ωcat :=
 Notation "G [ A , B ]" := (hom'' G A B) (at level 80).
 
 Definition idL {G:ωcat} {x y : |G| } (f : |G [x,y]|) : f ° identity x = f.
-  destruct G as [G a]. destruct a as [a iR iL]. destruct iL as [comp0 comp1]. simpl in *.
+  destruct G as [G a]. destruct a as [a is_c iR iL]. destruct iL as [comp0 comp1]. simpl in *.
   specialize (comp0 x y). destruct comp0 as [comp0 _ ]. apply comp0.
 Defined.
 
 Definition idR {G:ωcat} {x y : |G| } (f : |G [x,y]|) : identity y ° f = f.
-  destruct G as [G a]. destruct a as [a iR iL]. destruct iR as [comp0 comp1]. simpl in *.
+  destruct G as [G a]. destruct a as [a is_c iR iL]. destruct iR as [comp0 comp1]. simpl in *.
   specialize (comp0 x y). destruct comp0 as [comp0 _ ]. apply comp0.
 Defined.
 
@@ -396,17 +449,6 @@ CoInductive weak_equivalence : ∀ (G H: ωcat) (f : G ==> H), Type :=
     (∀ x x' : |G|, weak_equivalence (G[x,x']) (H[f @@ x,f @@ x']) (f<<x,x'>>)) -> 
     weak_equivalence G H f.
 
-(*** Try to state the compatibility with transport ***)
-
-CoInductive GHom_eq_J  (G G' : ωcat) (f g : G ==> G') : Type :=
-   mkGHom_eq_J : ∀ (fgeq : ∀ x, f @@ x = g @@ x),
-                   (∀ x y, GHom_eq_J (G [x, y])
-                                 (G' [g @@ x, g @@ y])
-                                 (transport_GHomL_eq_J (inverse (fgeq x)) °° 
-                                  (transport_GHomR_eq_J (fgeq y) °° 
-                                   (f << x , y >>))) 
-                                 (g << x , y >>)) ->
-                   GHom_eq_J _ _ f g.
 
 (* for inverse *)
 

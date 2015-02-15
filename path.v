@@ -58,8 +58,11 @@ Proof.
   destruct p; reflexivity.
 Defined.
 
-Definition concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z :=
-  eq_rect _ (fun w => w = z) q _ (inverse p).
+(* Definition concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z := *)
+(*   eq_rect _ (fun w => w = z) q _ (inverse p). *)
+Definition concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z.
+  destruct p; exact q.
+Defined.
 
 Notation "p @ q" := (concat p q) (at level 20) : type_scope.
 
@@ -230,8 +233,7 @@ Definition transport_forall
 Definition transport_paths_lr {A : Type} {x1 x2 : A} (p : x1 = x2) (q : x1 = x1)
   : transport (fun x => x = x) p q = eq_sym p @ q @ p.
 Proof.
-  destruct p; simpl.
-  rewrite <- ((eq_sym (idpath_L q))). 
+  destruct p; simpl. 
   apply (eq_sym (idpath_R q)). 
 Defined.
 

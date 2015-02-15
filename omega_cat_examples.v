@@ -47,6 +47,67 @@ Definition GS1 := @mkGType unit (λ _ _ : unit,
                                            | inr _ => empty
                                          end)).
 
+Definition transport_IsωPreCat G G' (e:G = G') (compG : IsωPreCat G) :
+  e # compG = {| _comp := e # (@_comp _ compG); _id := e # (@_id _ compG) |}.
+  destruct e, compG. reflexivity.
+Defined.
+
+Definition path_IsωPreCat G (compG compG' : IsωPreCat G) :
+  (@_comp _ compG = @_comp _ compG') -> (@_id _ compG = @_id _ compG') ->
+  compG = compG'.
+  destruct compG,compG'; simpl.
+  intros e e'; destruct e, e'. reflexivity.
+Defined.
+
+Definition decpaths_nat_refl g : decpaths_nat g g = inl eq_refl.
+  induction g.
+  - reflexivity.
+  - simpl. rewrite IHg. reflexivity.
+Defined.
+
+Definition decpaths_nat_neq g g' ( e : ~~ g = g') : {e' : ~~ g = g' & decpaths_nat g g' = inr e'}.
+  generalize dependent g'. induction g; destruct g'; intro e.
+  - simpl in *. exists e. destruct (e eq_refl).
+  - simpl. refine (existT _ _ eq_refl).
+  - simpl. refine (existT _ _ eq_refl).
+  - simpl. assert (~~ g = g'). intro H. destruct (e (ap S H)).
+    specialize (IHg g' H). destruct IHg as [e' IHg]. exists (λ e0 : S g = S g',
+      match e0 in (_ = y) return (y = S g' → path.Empty) with
+      | eq_refl =>
+          λ H0 : S g = S g',
+          eq_ind_r (λ _ : nat, path.Empty)
+            (e'
+               (f_equal (λ e1 : nat, match e1 with
+                                     | 0 => g
+                                     | S n => n
+                                     end) H0))
+            (f_equal (λ e1 : nat, match e1 with
+                                  | 0 => g
+                                  | S n => n
+                                  end) H0)
+      end eq_refl).
+    rewrite IHg. reflexivity.  
+Defined.
+
+Definition unapS m n : S m = S n -> m = n. intro. inversion H. auto. Defined.
+
+Definition decpaths_nat_refl' g g' (e: g = g') : {e' : g = g' & decpaths_nat g g' = inl e'}.
+  generalize dependent g'. induction g; destruct g'; intro e.
+  - exists eq_refl. reflexivity.
+  - inversion e. 
+  - inversion e.
+  - specialize (IHg g' (unapS e)). destruct IHg. exists (f_equal S x).
+    simpl. rewrite e0. reflexivity. 
+Defined.
+
+Definition GS1_eq_terminal (g g':nat) : g = g' -> (GS1 [tt, tt]) [g, g'] = terminal.
+  destruct 1. unfold hom'; simpl. rewrite decpaths_nat_refl. reflexivity.
+Defined.
+
+Definition GS1_neq_empty (g g':nat) : ~~ g = g' -> (GS1 [tt, tt]) [g, g'] = empty.
+  unfold hom'; simpl; intro H. rewrite (decpaths_nat_neq H).2. reflexivity.
+Defined.
+
 (* Definition GS1 := @mkGType unit (fun _ _ => @mkGType Z (fun _ _ => terminal)). *)
 
 CoFixpoint init_empty (G : GType) : empty ==> G :=
@@ -111,46 +172,18 @@ Instance empty_CompoGType : IsωPreCat empty :=
 
 Definition CGempty : ωPreCat := (empty; empty_CompoGType).
 
-Definition decpaths_nat_refl g : decpaths_nat g g = inl eq_refl.
-  induction g.
-  - reflexivity.
-  - simpl. rewrite IHg. reflexivity.
-Defined.
-
-Definition decpaths_nat_neq g g' ( e : ~~ g = g') : {e' : ~~ g = g' & decpaths_nat g g' = inr e'}.
-  generalize dependent g'. induction g; destruct g'; intro e.
-  - simpl in *. exists e. destruct (e eq_refl).
-  - simpl. refine (existT _ _ eq_refl).
-  - simpl. refine (existT _ _ eq_refl).
-  - simpl. assert (~~ g = g'). intro H. destruct (e (ap S H)).
-    specialize (IHg g' H). destruct IHg as [e' IHg]. exists (λ e0 : S g = S g',
-      match e0 in (_ = y) return (y = S g' → path.Empty) with
-      | eq_refl =>
-          λ H0 : S g = S g',
-          eq_ind_r (λ _ : nat, path.Empty)
-            (e'
-               (f_equal (λ e1 : nat, match e1 with
-                                     | 0 => g
-                                     | S n => n
-                                     end) H0))
-            (f_equal (λ e1 : nat, match e1 with
-                                  | 0 => g
-                                  | S n => n
-                                  end) H0)
-      end eq_refl).
-    rewrite IHg. reflexivity.  
-Defined.
-
 Definition Compo_S1 : Compo GS1.
 apply mkCompo; intros.
 - econstructor. apply (mkGHom (product (hom GS1 x y) (hom GS1 y z)) (hom GS1 x z)
                               (fun z => fst z + snd z)).
-  + intros. simpl. destruct x0 as [e e'], x' as [h h']; simpl.
-    case (decpaths_nat e h); case (decpaths_nat e' h'); simpl; intros.
-    * destruct e0, e1. rewrite decpaths_nat_refl. apply compo.
-    * apply uncomposable_right.
-    * apply uncomposable_left.
-    * apply uncomposable_left.
+  + intros [e e'] [h h']. 
+    case (decpaths_nat e h); intro. case (decpaths_nat e' h'); intro.
+    * (* pose (GS1_eq_terminal e0). pose (GS1_eq_terminal e1). *)
+      (* pose (GS1_eq_terminal (ap2 plus e0 e1)). *)
+      (* simpl in *. rewrite e2, e3, e4. apply compo.  *)
+      destruct e0, e1. simpl. repeat rewrite decpaths_nat_refl. apply compo.
+    * pose (GS1_neq_empty n). simpl in *. rewrite e1. apply uncomposable_right.
+    * pose (GS1_neq_empty n). simpl in *. rewrite e0. apply uncomposable_left.
 - apply mkCompo; intros; simpl.
    + case (decpaths_nat x0 y0); case (decpaths_nat y0 z); case (decpaths_nat x0 z);
      simpl; intros; try apply composable_id_left; try apply composable_id_right; try apply uncomposable_left; try apply uncomposable_right.
@@ -241,18 +274,6 @@ Defined.
 Instance transport_S1 : transport_eq CGS1
   := canonical_transport _.
 
-Definition transport_IsωPreCat G G' (e:G = G') (compG : IsωPreCat G) :
-  e # compG = {| _comp := e # (@_comp _ compG); _id := e # (@_id _ compG) |}.
-  destruct e, compG. reflexivity.
-Defined.
-
-Definition path_IsωPreCat G (compG compG' : IsωPreCat G) :
-  (@_comp _ compG = @_comp _ compG') -> (@_id _ compG = @_id _ compG') ->
-  compG = compG'.
-  destruct compG,compG'; simpl.
-  intros e e'; destruct e, e'. reflexivity.
-Defined.
-
 Definition CGS1_eq_terminal (g g':nat) : g = g' -> (CGS1 [tt, tt]) [g, g'] = CGterminal.
   destruct 1. unfold hom'; simpl. refine (path_sigma' _ _ _).
   - rewrite decpaths_nat_refl. reflexivity.
@@ -268,6 +289,7 @@ Definition CGS1_neq_empty (g g':nat) : ~~ g = g' -> (CGS1 [tt, tt]) [g, g'] = CG
     + unfold compoHom. simpl. rewrite (decpaths_nat_neq H).2. reflexivity. 
     + unfold idHom. simpl. rewrite (decpaths_nat_neq H).2. reflexivity. 
 Defined.
+
 
 Definition path_compoIdR_H (G G' H : ωPreCat) (candidate_id : | H |)
            (_trans' : transport_eq G') 
@@ -594,8 +616,22 @@ Definition terminal_compo_ωFunctor : @compo_ωFunctor CGterminal _ :=
 Definition S1_compo_ωFunctor : @compo_ωFunctor CGS1 _ :=
   interchange_idcompo_compo_ωFunctor interchange_S1 idCompo_S1.
 
+CoFixpoint GHom_eq_refl G H ( f: G ==> H) : GHom_eq _ _ f f.
+refine (mkGHom_eq_J _ _ _ _).
+- intros; reflexivity.
+- intros; simpl. unfold transport_GHomL_eq_J, transport_GHomR_eq_J. simpl.
+Admitted.
+
+CoFixpoint transport_is_canonical_canonical G : transport_is_canonical (canonical_transport G).
+apply mkTransport_compat.
+- intros. apply GHom_eq_refl. 
+- intros. apply GHom_eq_refl. 
+- intros. apply transport_is_canonical_canonical.  
+Defined.
+
 Instance terminal_IsOmegaCategory : IsOmegaCategory CGterminal :=
   {| _transport := _;
+     _transport_is_canonical := transport_is_canonical_canonical _;
      _idR := compoIdR_terminal _;
      _idL := compoIdL_terminal _;
      _compo_ωFunctor := terminal_compo_ωFunctor;
@@ -606,6 +642,7 @@ Definition ω_terminal : ωcat := (CGterminal; terminal_IsOmegaCategory).
 
 Instance S1_IsOmegaCategory : IsOmegaCategory CGS1 :=
   {| _transport := _;
+     _transport_is_canonical := transport_is_canonical_canonical _;
      _idR := compoIdR_S1;
      _idL := compoIdL_S1;
      _compo_ωFunctor := S1_compo_ωFunctor;
@@ -613,63 +650,4 @@ Instance S1_IsOmegaCategory : IsOmegaCategory CGS1 :=
 |}.
 
 Definition ωS1 : ωcat := (CGS1; S1_IsOmegaCategory).
-
-  
-
-
-
-
-(* probably useless )*)
-
-
-
-CoInductive GHom_eq  (G G' : ωPreCat) (f g : G ==> G') (_transport:transport_eq G'): Type :=
-   mkGHom_eq : ∀ (fgeq : ∀ x, f @@ x = g @@ x),
-                   (∀ x y, @GHom_eq (G [x, y])
-                                 (G' [g @@ x, g @@ y]) 
-                                 (transport_GHomL_eq_here (inverse (fgeq x)) °° 
-                                  (transport_GHomR_eq_here (fgeq y) °° 
-                                   (f << x , y >>))) 
-                                 (g << x , y >>) _) ->
-                   @GHom_eq G G' f g _.
-
-CoInductive GHom_eq_J  (G G' : ωPreCat) (f g : G ==> G') : Type :=
-   mkGHom_eq_J : ∀ (fgeq : ∀ x, f @@ x = g @@ x),
-                   (∀ x y, @GHom_eq_J (G [x, y])
-                                 (G' [g @@ x, g @@ y]) 
-                                 (transport (fun X => G[x,y] ==> G'[X,g @@ y]) (fgeq x)  
-                                  (transport (fun X => G[x,y] ==> G'[f @@ x,X]) (fgeq y) (f << x , y >>))) 
-                                 (g << x , y >>)) ->
-                   @GHom_eq_J G G' f g.
-
-CoFixpoint GId_id_J G G' (f:G ==> G') : @GHom_eq_J G G' (GId _ °° f) f.
-refine (mkGHom_eq_J _ _ _ _).
-- intros. reflexivity.
-- intros. simpl. apply GId_id_J.
-Defined.
-
-CoFixpoint unique_morphism : CGterminal ==> CGterminal :=
-  mkGHom CGterminal.1 CGterminal.1 id (fun _ _ => unique_morphism).
-
-CoFixpoint Gcomp_trans_term_J (f:CGterminal ==> CGterminal) : 
-  @GHom_eq_J _ _ f unique_morphism.
-refine (mkGHom_eq_J _ _ _ _).
-- intro. destruct (f @@ x), x. reflexivity.
-- intros. destruct x, y, (f @@ tt). apply Gcomp_trans_term_J.
-Defined.
-
-CoFixpoint Gcomp_trans_term (f:CGterminal ==> CGterminal) :
-  @GHom_eq _ _ f unique_morphism _.
-refine (mkGHom_eq _ _ _ _).
-- intro. destruct (f @@ x), x. reflexivity.
-- intros. destruct x, y, (f @@ tt). apply Gcomp_trans_term.
-Defined.
-
-CoFixpoint Gterminal_morphism_contractible (f g:CGterminal ==> CGterminal) : 
-  @GHom_eq _ _ f g _.
-refine (mkGHom_eq _ _ _ _).
-- intro. destruct (f @@ x), (g @@ x). reflexivity.
-- intros. destruct x, y, (f @@ tt), (g @@ tt). apply Gterminal_morphism_contractible.
-Defined.
-
 
