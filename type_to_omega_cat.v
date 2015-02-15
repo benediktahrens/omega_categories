@@ -2258,9 +2258,35 @@ apply transport_GHomL_eq_J_id_ind.
 apply transport_GHomL_eq_J_id_ind.
 Defined.
 
+CoFixpoint append_right_id_ind'' {T' T U : Type}
+           (k : T' ->  T -> U)
+           (compK := piComp_V k)
+           (f : |piω T|) (x0 y0 : |piω T'|) (x1 y1 : |piω (x0 = y0)|) :
+  Id_ind'' (piω (x1 = y1)) (piω ((identity f) ° x1 = (identity f) ° y1))
+          (append_right x1 y1 (identity f)).
+apply mkId_ind''. intro H. destruct H. reflexivity.
+intros. apply (append_right_id_ind'' (x0 = y0) (f = f) (k x0 f = k y0 f) (@ap2 _ _ _ k _ _ _ _)).
+Defined.
+
+Definition transport_GHomR_eq_J_id_ind {T:Type} {x y z : T } (f : x = y) :
+  Id_ind'' (piω (z = x)) (piω (z = y)) (@transport_GHomR (piω T) z x y f).
+apply mkId_ind''. intro H; destruct H. reflexivity.
+intros. apply mkId_ind''. intro H; destruct H. reflexivity.
+intros. simpl. apply (@append_right_id_ind'' (z = x) (x = y) (z = y) concat f).
+Defined.
+
+Definition transport_GHomR_eq_J_eq_fun {T:Type} {x y z : T } (f : x = y) H:
+   (@transport_GHomR_eq_J (piω T) z x y f) @@ H =
+   (@transport_GHomR (piω T) z x y f) @@ H :=  
+  concat_L H (transport_paths_r f eq_refl). 
+
 Definition transport_GHomR_eq_J_eq {T:Type} {x y z : T } (f : x = y) :
   GHom_eq _ _ (@transport_GHomR_eq_J (piω T) z x y f) (@transport_GHomR (piω T) z x y f).
-Admitted.
+apply (mkGHom_eq_J _ _ (fun e => transport_GHomR_eq_J_eq_fun f e)).
+intros. apply transport_GHomL_eq_J_i_eq_gen.
+apply transport_GHomR_eq_J_id_ind. 
+apply transport_GHomR_eq_J_id_ind.
+Defined.
 
 CoFixpoint pi_transport_is_canonical T : @transport_is_canonical (piω T) _.
 apply mkTransport_compat.
