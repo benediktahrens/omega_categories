@@ -616,22 +616,23 @@ Definition terminal_compo_ωFunctor : @compo_ωFunctor CGterminal _ :=
 Definition S1_compo_ωFunctor : @compo_ωFunctor CGS1 _ :=
   interchange_idcompo_compo_ωFunctor interchange_S1 idCompo_S1.
 
-CoFixpoint GHom_eq_refl G H ( f: G ==> H) : GHom_eq _ _ f f.
+CoFixpoint unique_morphism G (f g : G ==> CGterminal) : GHom_eq _ _ f g.
 refine (mkGHom_eq_J _ _ _ _).
-- intros; reflexivity.
-- intros; simpl. unfold transport_GHomL_eq_J, transport_GHomR_eq_J. simpl.
-Admitted.
+- intros. destruct (f @@ x), (g @@ x); reflexivity.
+- intros. apply unique_morphism.
+Defined.
 
-CoFixpoint transport_is_canonical_canonical G : transport_is_canonical (canonical_transport G).
+CoFixpoint transport_is_canonical_canonical_terminal :
+  transport_is_canonical (canonical_transport CGterminal).
 apply mkTransport_compat.
-- intros. apply GHom_eq_refl. 
-- intros. apply GHom_eq_refl. 
-- intros. apply transport_is_canonical_canonical.  
+- intros. apply unique_morphism. 
+- intros. apply unique_morphism. 
+- intros. apply transport_is_canonical_canonical_terminal.  
 Defined.
 
 Instance terminal_IsOmegaCategory : IsOmegaCategory CGterminal :=
   {| _transport := _;
-     _transport_is_canonical := transport_is_canonical_canonical _;
+     _transport_is_canonical := transport_is_canonical_canonical_terminal;
      _idR := compoIdR_terminal _;
      _idL := compoIdL_terminal _;
      _compo_ωFunctor := terminal_compo_ωFunctor;
@@ -640,9 +641,70 @@ Instance terminal_IsOmegaCategory : IsOmegaCategory CGterminal :=
 
 Definition ω_terminal : ωcat := (CGterminal; terminal_IsOmegaCategory).
 
+Definition transpoert_GHom_eq G H G' H' (eG : G = G') (eH: H = H') f g :
+  GHom_eq G' H'
+          (transport (fun X => X ==> H') eG (transport (fun X => G ==> X) eH f))
+          (transport (fun X => X ==> H') eG (transport (fun X => G ==> X) eH g))
+          -> GHom_eq G H f g.
+  destruct eG, eH. auto.
+Defined.
+
+CoFixpoint empty_morphism H (f g : CGempty ==> H) : GHom_eq _ _ f g.
+refine (mkGHom_eq_J _ _ _ _).
+- intros. destruct x.
+- intros. apply empty_morphism.
+Defined.
+
+CoFixpoint transport_is_canonical_canonical_empty :
+  transport_is_canonical (canonical_transport CGempty).
+apply mkTransport_compat.
+- intros. apply empty_morphism. 
+- intros. apply empty_morphism. 
+- intros. apply transport_is_canonical_canonical_empty.  
+Defined.
+
+CoFixpoint transport_is_canonical_canonical_S1 :
+  transport_is_canonical (canonical_transport CGS1).
+apply mkTransport_compat.
+- intros. refine (mkGHom_eq_J _ _ _ _).
+  + intros. reflexivity.
+  + destruct e, z. intros n m. case (decpaths_nat n m); intro H. 
+      * refine (transpoert_GHom_eq (CGS1_eq_terminal H) (CGS1_eq_terminal H) _ _ _).
+        apply unique_morphism.
+      * refine (transpoert_GHom_eq (CGS1_neq_empty H) (CGS1_neq_empty H) _ _ _).
+        apply empty_morphism.
+- intros. refine (mkGHom_eq_J _ _ _ _).
+  + intros. reflexivity.
+  + destruct e, x. intros n m. case (decpaths_nat (n+0) (m+0)); intro H. 
+      * refine (transpoert_GHom_eq eq_refl (CGS1_eq_terminal H) _ _ _).
+        apply unique_morphism.
+      * assert (H0 : ~~ n = m). intro e; apply H. repeat rewrite <- plus_n_O. auto.
+        refine (transpoert_GHom_eq (CGS1_neq_empty H0) (CGS1_neq_empty H) _ _ _).
+        apply empty_morphism.
+- intros. destruct x, y.
+  apply mkTransport_compat.
+  + intros n m p. intro e. destruct e. unfold transport_GHomL_compat. simpl.
+    case (decpaths_nat n p); intro H. 
+    * refine (transpoert_GHom_eq (CGS1_eq_terminal H) (CGS1_eq_terminal H) _ _ _).
+      apply unique_morphism.
+    * refine (transpoert_GHom_eq (CGS1_neq_empty H) (CGS1_neq_empty H) _ _ _).
+      apply empty_morphism.
+  + intros n m p. intro e. destruct e. unfold transport_GHomL_compat. simpl.
+    case (decpaths_nat n m); intro H. 
+    * refine (transpoert_GHom_eq (CGS1_eq_terminal H) (CGS1_eq_terminal H) _ _ _).
+      apply unique_morphism.
+    * refine (transpoert_GHom_eq (CGS1_neq_empty H) (CGS1_neq_empty H) _ _ _).
+      apply empty_morphism.
+  + intros n m. case (decpaths_nat n m); intro H. 
+    unfold transport_GHom_eq_hom. simpl. rewrite (CGS1_eq_terminal H).
+    apply transport_is_canonical_canonical_terminal.  
+    unfold transport_GHom_eq_hom. simpl. rewrite (CGS1_neq_empty H).
+    apply transport_is_canonical_canonical_empty.  
+Defined.
+
 Instance S1_IsOmegaCategory : IsOmegaCategory CGS1 :=
   {| _transport := _;
-     _transport_is_canonical := transport_is_canonical_canonical _;
+     _transport_is_canonical := transport_is_canonical_canonical_S1;
      _idR := compoIdR_S1;
      _idL := compoIdL_S1;
      _compo_ωFunctor := S1_compo_ωFunctor;
