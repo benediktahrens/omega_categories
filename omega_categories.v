@@ -24,7 +24,7 @@ mkCompo : ∀ (G : GType),
 Compo G.
 
 Class IsωPreCat (G : GType) := mkCompoGType {_comp : Compo G; 
-                                           _id : Id G}.
+                                             _id : Id G}.
 
 Definition ωPreCat := {G: GType & IsωPreCat G}.
 
@@ -149,7 +149,10 @@ CoInductive transport_GHom_eq_type : ∀ (G:ωPreCat), Type :=
   (∀ {x y : |G| }, transport_GHom_eq_type (G[x,y])) ->
   transport_GHom_eq_type G.
 
-(*** transport_eq describes the internal transport of identity in the ωPreCat ***)
+(*** transport_eq describes the internal transport of identity in an ωPreCat ***)
+(*** The need for a internal transport is explained in footnote 1 of the paper, ***)
+(*** it is used in the construction of the fundamental groupoid to provide ***)
+(*** a more direct transport, based on concatenation only. ***)
 
 Class _transport_eq (G:ωPreCat) := _mkTransport_eq
 {
@@ -181,6 +184,9 @@ Defined.
 Hint Extern 1 (_transport_eq (?G[?x,?z])) => apply (transport_GHom_eq_hom _) : typeclass_instances.
 
 (*** State the compatibility with canonical transport ***)
+(*** Because the internal transport can not be arbitrary ***)
+(*** We say that it must correspond (by bisimilarity) to the ***)
+(*** to the canonical transport ***)
 
 CoInductive GHom_eq  (G G' : ωPreCat) (f g : G ==> G') : Type :=
    mkGHom_eq_J : ∀ (fgeq : ∀ x, f @@ x = g @@ x),
