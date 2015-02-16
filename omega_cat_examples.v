@@ -660,32 +660,109 @@ apply mkInterchange.
     apply (path_interchange _ (inverse (CGS1_neq_empty Hf)) interchange_empty).
 Defined.
 
-CoFixpoint associativityH_terminal (comp1 comp2 comp3 comp4 : Composable CGterminal.1 CGterminal.1 CGterminal.1) :
-  @associativityH CGterminal CGterminal CGterminal CGterminal CGterminal CGterminal _ comp1 comp2 comp3 comp4.
+CoFixpoint associativityH_terminal G1 G2 G3 G12 G23 trans comp1 comp2 comp3 comp4 :
+  @associativityH G1 G2 G3 G12 G23 CGterminal trans comp1 comp2 comp3 comp4.
 apply mkAssociativityH. refine (existT _ _ _).
 - intros. match goal with | |- ?e = ?e' => destruct e, e' end. reflexivity.
 - intros. apply associativityH_terminal.
 Defined.
 
-CoFixpoint associativity'_terminal : @associativity' CGterminal _.
+CoFixpoint associativityH_empty1 G1 G2 G3 G12 G23 trans comp1 comp2 comp3 comp4 :
+  @associativityH CGempty G1 G2 G3 G12 G23 trans comp1 comp2 comp3 comp4.
+apply mkAssociativityH. refine (existT _ _ _).
+- intros. destruct f.
+- intros. apply associativityH_empty1.
+Defined.
+
+CoFixpoint associativityH_empty2 G1 G2 G3 G12 G23 trans comp1 comp2 comp3 comp4 :
+  @associativityH G1 CGempty G2 G3 G12 G23 trans comp1 comp2 comp3 comp4.
+apply mkAssociativityH. refine (existT _ _ _).
+- intros. destruct g.
+- intros. apply associativityH_empty2.
+Defined.
+
+CoFixpoint associativityH_empty3 G1 G2 G3 G12 G23 trans comp1 comp2 comp3 comp4 :
+  @associativityH G1 G2 CGempty G3 G12 G23 trans comp1 comp2 comp3 comp4.
+apply mkAssociativityH. refine (existT _ _ _).
+- intros. destruct h.
+- intros. apply associativityH_empty3.
+Defined.
+
+CoFixpoint associativity'_terminal trans : @associativity' CGterminal trans.
 apply mkAssociativity'. 
 - intros. apply associativityH_terminal. 
 - intros. apply associativity'_terminal.
 Defined.
 
-Definition associativity_terminal : @associativity CGterminal _ :=
-  assoc'_assoc associativity'_terminal.
+Definition associativity_terminal trans : @associativity CGterminal trans :=
+  assoc'_assoc (associativity'_terminal trans).
+
+CoFixpoint associativity'_empty trans : @associativity' CGempty trans.
+apply mkAssociativity'. 
+- intros. apply associativityH_empty1. 
+- intros. apply associativity'_empty.
+Defined.
+
+Definition path_associativityH G1 G2 G3 G12 G23 G
+           G1' G2' G3' G12' G23' G'
+           trans comp12 comp23 comp12_3 comp1_23
+           (e1 : G1 = G1') (e2 : G2 = G2') (e3 : G3 = G3')
+           (e12 : G12 = G12') (e23 : G23 = G23') (e : G = G') :
+  (forall _trans comp12 comp23 comp12_3 comp1_23,
+     @associativityH G1 G2 G3 G12 G23 G  _trans comp12 comp23 comp12_3 comp1_23) ->
+  @associativityH G1' G2' G3' G12' G23' G' trans comp12 comp23 comp12_3 comp1_23.
+  intro. destruct e1, e2, e3, e12, e23, e, (X trans comp12 comp23 comp12_3 comp1_23).
+  apply mkAssociativityH; auto.
+Defined.
+
+Arguments associativityH : clear implicits.
+
+Definition path_associativity G G' trans (e : G = G') :
+  (forall _trans , @associativity' G _trans) -> @associativity' G' trans.
+  intro. destruct e. apply X. 
+Defined.
 
 Definition associativity'_S1 : @associativity' CGS1 _.
-(*   apply mkAssociativity'.  *)
-(*   - intros. apply mkAssociativityH. refine (existT _ _ _). *)
-(*     + intros. simpl. apply Z.add_assoc. *)
-(*     + intros. apply associativityH_terminal.  *)
-(*   - intros. apply mkAssociativity'. *)
-(*     + intros. apply associativityH_terminal.  *)
-(*     + intros. apply associativity'_terminal. *)
-(* Defined. *)
-Admitted.
+  apply mkAssociativity'.
+  - intros. destruct x, y ,z, t. apply mkAssociativityH. refine (existT _ _ _).
+    + intros. apply Plus.plus_assoc.
+    + intros. case (decpaths_nat f f'); intro Hf.
+      case (decpaths_nat g g'); intro Hg.
+      case (decpaths_nat h h'); intro Hh.
+      assert (H : h ° (g ° f) = h' ° (g' ° f')). destruct Hf, Hg, Hh. reflexivity. 
+      exact (path_associativityH _ _ _ _ _ eq_refl eq_refl eq_refl eq_refl eq_refl 
+                             (inverse (CGS1_eq_terminal H)) 
+                             (@associativityH_terminal _ _ _ _ _)).
+      exact (path_associativityH _ _ _ _ _ eq_refl eq_refl (inverse (CGS1_neq_empty Hh))
+                                 eq_refl eq_refl eq_refl 
+                                 (@associativityH_empty3 _ _ _ _ _)).
+      exact (path_associativityH _ _ _ _ _ eq_refl (inverse (CGS1_neq_empty Hg)) eq_refl 
+                                 eq_refl eq_refl eq_refl 
+                                 (@associativityH_empty2 _ _ _ _ _)).
+      exact (path_associativityH _ _ _ _ _ (inverse (CGS1_neq_empty Hf)) eq_refl eq_refl 
+                                 eq_refl eq_refl eq_refl 
+                                 (@associativityH_empty1 _ _ _ _ _)).
+  - intros. destruct x, y. apply mkAssociativity'.
+  + intros.
+    case (decpaths_nat x y); intro Hf.
+    case (decpaths_nat y z); intro Hg.
+    case (decpaths_nat z t); intro Hh.
+      exact (path_associativityH _ _ _ _ _ eq_refl eq_refl eq_refl eq_refl eq_refl 
+                             (inverse (CGS1_eq_terminal (Hf@Hg@Hh))) 
+                             (@associativityH_terminal _ _ _ _ _)).
+      exact (path_associativityH _ _ _ _ _ eq_refl eq_refl (inverse (CGS1_neq_empty Hh))
+                                 eq_refl eq_refl eq_refl 
+                                 (@associativityH_empty3 _ _ _ _ _)).
+      exact (path_associativityH _ _ _ _ _ eq_refl (inverse (CGS1_neq_empty Hg)) eq_refl 
+                                 eq_refl eq_refl eq_refl 
+                                 (@associativityH_empty2 _ _ _ _ _)).
+      exact (path_associativityH _ _ _ _ _ (inverse (CGS1_neq_empty Hf)) eq_refl eq_refl 
+                                 eq_refl eq_refl eq_refl 
+                                 (@associativityH_empty1 _ _ _ _ _)).
+  + intros. case (decpaths_nat x y); intro Hf.
+    apply (path_associativity _ (inverse (CGS1_eq_terminal Hf)) associativity'_terminal).
+    apply (path_associativity _ (inverse (CGS1_neq_empty Hf)) associativity'_empty).
+Defined.
 
 Definition associativity_S1 : @associativity CGS1 _ :=
   assoc'_assoc associativity'_S1.
@@ -701,7 +778,7 @@ Instance terminal_IsOmegaCategory : IsOmegaCategory CGterminal :=
      _idR := compoIdR_terminal _;
      _idL := compoIdL_terminal _;
      _compo_ωFunctor := terminal_compo_ωFunctor;
-     _assoc := associativity_terminal
+     _assoc := associativity_terminal _
 |}.
 
 Definition ω_terminal : ωcat := (CGterminal; terminal_IsOmegaCategory).
