@@ -129,9 +129,3 @@ Definition plus_int (z z' : Int) : Int
      end.
 
 Notation "z '.+' z'" := (plus_int z z') (at level 50).
-
-Fixpoint plus_assoc (z z' z'': Int) : z .+ (z' .+ z'') = (z .+ z') .+ z''.
-Admitted.
-
-Fixpoint plus_left (z z' z'': Int) : z .+ z' = z .+ z'' -> z' = z''.
-Admitted. 
