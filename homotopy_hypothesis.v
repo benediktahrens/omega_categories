@@ -18,7 +18,7 @@ Definition Univalent_ωcat := {G : ωcat & IsUnivalent G}.
 
 Definition Univ_embedding : Univalent_ωcat -> ωcat := fun G => G.1.
 
-Instance ωcat_transport (G:ωcat) : transport_eq G.1 := _transport.
+Instance ωcat_transport (G:ωcat) : transport_eq G.1 := _tran.
 
 Definition ωFunctor (G H: ωcat) := { f:G==>H & IsωFunctor G.1 f _}.
 
