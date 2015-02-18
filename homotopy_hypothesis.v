@@ -24,28 +24,32 @@ Definition ωFunctor (G H: ωcat) := { f:G==>H & IsωFunctor G.1 f _}.
 
 Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
   exists (G.1 °° F.1).
-  (* split. *)
-  (* - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG' HF'. *)
-  (*   apply mkPreservesCompo. intros. refine (mkCommutativeSquare _ _ _ _ _ _ ).     *)
-  (*   + intros. destruct HF, HG. clear p p0. specialize (c x y z). *)
-  (*     specialize (c0 (F @@ x) (F@@y) (F@@z)). destruct c, c0. clear c c0. *)
-  (*     exact (comm0 ((F << x, y >>) @@ (fst x0), (F << y, z >>) @@ (snd x0)) @ ap _ (comm x0)). *)
-  (*   + generalize dependent C. generalize dependent B. generalize dependent A. cofix. *)
-  (*     intros. refine (mkCommutativeSquare _ _ _ _ _ _ ).  *)
-  (*     intros. destruct x1. destruct HF. simpl. *)
-  (*     destruct x0 as [e f], y0 as [e' f']; simpl. *)
-  (*     unfold prod'. simpl. refine (ωComp _ _ _ _ _ _ _ _ _ _ _). *)
-  (*     destruct i0. destruct p. simpl in *. specialize (c (x1 @@ x) (x1 @@ y) (x1 @@ z)). destruct c. *)
-  (*   simpl in comm. pose (comm ((x1 << x, y >>) @@ fst x0, ((x1 << y, z >>) @@ snd x0))). *)
-  (*   destruct i. destruct p1. simpl in *. specialize (c0 x y z). destruct c0. *)
-  (*   pose (comm0 x0). *)
-  (*   pose (comm ((x1 << x, y >>) @@ fst x0, ((x1 << y, z >>) @@ snd x0))). *)
-  (*   exact (e1 @ ap _ e0). *)
-  (*   + intros. destruct x0, y0. simpl.  apply ωComp. *)
-  (*   simpl in e. rewrite e. *)
-  (*   destruct p. simpl in *. specialize (c x y z). destruct c. *)
-  (*   pose (comm x0). simpl in e. rewrite e. *)
-  admit.
+  split.
+  - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG' HF'.
+    generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
+    cofix. intros.
+    apply mkPreservesCompo. Focus 2. intros. simpl.
+    refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
+    destruct HF; apply p. 
+    destruct HG; apply p.  
+    clear ωComp. intros. destruct HF, HG. clear p p0.
+    generalize dependent c0. generalize dependent c.
+    generalize dependent G. generalize dependent F.
+    generalize A B C x y z. clear A B C x y z. cofix. intros. 
+    refine (mkCommutativeSquare _ _ _ _ _ _ ).
+    + clear ωComp. intros. specialize (c x y z). specialize (c0 (F @@ x) (F@@y) (F@@z)).
+      destruct c, c0. clear c c0.
+      exact (comm0 ((F << x, y >>) @@ (fst x0), (F << y, z >>) @@ (snd x0)) @ ap _ (comm x0)).
+    + intros. destruct c, c0. admit.
+  - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG HF.
+    generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
+    cofix. intros.
+    apply mkPreservesId. Focus 2. intros. simpl.
+    refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
+    destruct HF'; apply p. 
+    destruct HG'; apply p.  
+    clear ωComp. intros. destruct HF', HG'. clear p p0.
+    simpl. etransitivity. apply ap. apply e. apply e0.
 Defined.
 
 Notation "g °° f" := (ωComp f g) (at level 20).
@@ -66,13 +70,23 @@ Defined.
 Notation "f << x , x' >>" := (map' f x x') (at level 80).
 
 
-Program Definition ωFunctor_Id {G : ωcat} : ωFunctor G G := (GId G.1.1; _).
-Next Obligation. (* split. apply mkPreservesCompo. intros. *)
-                 (* simpl.       refine (mkCommutativeSquare _ _ _ _ _ _). *)
-                 (*       intros. destruct x0. reflexivity. simpl. *)
-  admit. Defined.
+Program Definition ωFunctor_Id {T} : ωFunctor (piW T) (piW T) := (GId (pi T); _).
+Next Obligation. split.
+- generalize dependent T. cofix. intros.
+  apply mkPreservesCompo.
+  + intros; simpl; unfold id. refine (mkCommutativeSquare _ _ _ _ _ _ ).
+    intros. reflexivity.
+    intros. refine (mkCommutativeSquare _ _ _ _ _ _ ).
+    * intro. simpl. apply idpath_R.
+    * intros. simpl. admit.  
+  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
+- generalize dependent T. cofix. intros.
+  apply mkPreservesId.
+  + intros; reflexivity.
+  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
+Defined.
 
-(* Deifnition of S1 using our homotopy hypothesis *)
+(* Definition of S1 using our homotopy hypothesis *)
 
 Definition S1 := HH_fun ωS1.
 
