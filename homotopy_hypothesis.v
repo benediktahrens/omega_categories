@@ -40,7 +40,7 @@ Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
     + clear ωComp. intros. specialize (c x y z). specialize (c0 (F @@ x) (F@@y) (F@@z)).
       destruct c, c0. clear c c0.
       exact (comm0 ((F << x, y >>) @@ (fst x0), (F << y, z >>) @@ (snd x0)) @ ap _ (comm x0)).
-    + intros. destruct c, c0. admit.
+    + intros. destruct c, c0, x0, y0. simpl. admit.
   - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG HF.
     generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
     cofix. intros.
@@ -52,6 +52,32 @@ Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
     simpl. etransitivity. apply ap. apply e. apply e0.
 Defined.
 
+CoFixpoint commutativeSquare_Id T U V f :
+  commutativeSquare (piω T ** piω U) (piω V) (piω T ** piω U) (piω V)
+                    _ f (prod_hom' (GId _) (GId _)) f (GId _).
+    intros. refine (mkCommutativeSquare _ _ _ _ _ _ ).
+    * intros. destruct x. reflexivity.
+    * destruct x as [x x'], y as [y y']. simpl.
+      match goal with | |- commutativeSquare _ _ _ _ _ _ _ ?g _ =>
+                        assert (g = (f << (id x, id x'), (id y, id y') >>)) end.
+      admit.
+      rewrite H. exact (commutativeSquare_Id (x=y) (x'=y') (f @@ (x,x') = f @@ (y,y'))
+                                       (f << (x, x'), (y, y') >>)).
+Defined.
+
+Program Definition ωFunctor_Id {T} : ωFunctor (piW T) (piW T) := (GId (pi T); _).
+Next Obligation. split.
+- generalize dependent T. cofix. intros.
+  apply mkPreservesCompo.
+  + clear ωFunctor_Id_obligation_1. simpl. unfold id. 
+    intros. apply commutativeSquare_Id.
+  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
+- generalize dependent T. cofix. intros.
+  apply mkPreservesId.
+  + intros; reflexivity.
+  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
+Defined.
+
 Notation "g °° f" := (ωComp f g) (at level 20).
 
 Axiom HH_fun : ωcat -> Type.
@@ -59,6 +85,7 @@ Axiom HH_fun : ωcat -> Type.
 Axiom HH_η : ∀ {C}, ωFunctor C (piW (HH_fun C)).
 
 Axiom HH : ∀ C T, IsEquiv (fun (f:ωFunctor (piW (HH_fun C)) (piW T)) => f °° HH_η).
+
 
 Notation "f @@ x" := (app f.1 x) (at level 20) : type_scope.
 
@@ -68,23 +95,6 @@ Definition map' G H (f : ωFunctor G H) (x x' : |G|) : ωFunctor (G [x,x']) (H [
 Defined.
 
 Notation "f << x , x' >>" := (map' f x x') (at level 80).
-
-
-Program Definition ωFunctor_Id {T} : ωFunctor (piW T) (piW T) := (GId (pi T); _).
-Next Obligation. split.
-- generalize dependent T. cofix. intros.
-  apply mkPreservesCompo.
-  + intros; simpl; unfold id. refine (mkCommutativeSquare _ _ _ _ _ _ ).
-    intros. reflexivity.
-    intros. refine (mkCommutativeSquare _ _ _ _ _ _ ).
-    * intro. simpl. apply idpath_R.
-    * intros. simpl. admit.  
-  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
-- generalize dependent T. cofix. intros.
-  apply mkPreservesId.
-  + intros; reflexivity.
-  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
-Defined.
 
 (* Definition of S1 using our homotopy hypothesis *)
 
@@ -205,7 +215,7 @@ Definition S1_rec_beta_loop (P : Type) (b : P) (l : b = b) :
   (@transport_equal_GHom _ _ ((ψ (_S1_rec l)) °° HH_η) (_S1_rec l) tt tt (eisretr (_S1_rec l)) 1).
 
 
-(* This one is not derviable *)
+(* This one is not derivable *)
   
 Definition S1_ind (P : S1 -> Type) (b : P base) (l : loop # b = b)
 : ∀ (x:S1), P x.
