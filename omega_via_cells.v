@@ -2,10 +2,6 @@ Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import path GType omega_categories type_to_omega_cat.
 
-(** * Globular sets, basic definitions  *)
-
-(** First, a notation for [existT], the quantifier over [Type]s *)
-
 Set Implicit Arguments.
 
 (*** Cellular machinery ***)
