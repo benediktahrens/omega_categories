@@ -119,12 +119,13 @@ destruct n.
 Defined. 
 
 Fixpoint J_cell n (T:Type) (x:|piω T|) 
-         (P : forall y, cell n ((piω T)[x,y]) -> Type) y e
-         (c : P x (identity_cell n _ x)) {struct n} : P y e.
+         (P : forall y, cell n ((piω T)[x,y]) -> Type) y
+         (c : cell n (piω T [x, y]))
+         (e : P x (identity_cell n _ x)) {struct n} : P y c.
 destruct n.
-- destruct e. exact c.
-- simpl in *. destruct e as [(e1,e2) e]. destruct e1.
-  exact (J_cell n (x = x) eq_refl (fun y e => P x ((eq_refl,y); e)) _ _ c).
+- destruct c. exact e.
+- simpl in *. destruct c as [(c1,c2) c]. destruct c1.
+  exact (J_cell n (x = x) eq_refl (fun y c => P x ((eq_refl,y); c)) _ _ e).
 Defined.
 
 (*** Compatibility with transport_eq ***)
@@ -315,13 +316,12 @@ Arguments J_cell : clear implicits.
 Definition piω_transport_eq_compat T : transport_eq_compat (piω_transport_eq' T). 
   econstructor; generalize dependent T; cofix; intro T. 
   apply mkTransport_eq_compat_type.
-  - intros. destruct e. simpl. apply (J_cell n T x (fun y e => _) y c). clear y c.
+  - intros. destruct e. apply (J_cell n T x (fun y e => _) y c). clear y c. 
     destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
-    unfold identity, concat; simpl.
     destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
     destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
     exact (@append_left_refl n (x=x) (x=x) (x=x) concat eq_refl eq_refl (eq_refl,eq_refl)). 
-  - intros. destruct e. simpl. apply (J_cell n T x (fun y e => _) y c). clear y c.
+  - intros. destruct e. apply (J_cell n T x (fun y e => _) y c). clear y c.
     destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
     destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
     destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
