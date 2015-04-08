@@ -1,110 +1,28 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import Omega Integers truncation. 
-Require Import path GType omega_cat_examples type_to_omega_cat omega_categories_transport omega_categories. 
+Require Import path GType omega_cat_examples type_to_omega_cat omega_categories omega_categories_transport. 
 
 Set Implicit Arguments.
 
-CoInductive IsRigid (G : ωcat) : Type :=
+Notation "f << x , x' >>" := (map' _ _ f x x') (at level 80).
+
+(* Strict ωcat (definition 15 of TLCA paper) *)
+
+CoInductive IsStrict (G : wild_ωcat) : Type :=
 mkId : IsHSet (|G|) ->
-       (∀ (x y : |G|), IsRigid (G [x,y])) ->
-       IsRigid G.
+       (∀ (x y : |G|), IsStrict (G [x,y])) ->
+       IsStrict G.
 
-Definition Rigid_ωcat := {G: ωcat & IsRigid G}.
+Definition Strict_wild_ωcat := {G: wild_ωcat & IsStrict G}.
 
+(* Homotopy Hypothesis 1 of TLCA paper *)
 
-Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
-  exists (G.1 °° F.1).
-  split.
-  - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG' HF'.
-    generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
-    cofix. intros.
-    apply mkPreservesCompo. Focus 2. intros. simpl.
-    refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
-    destruct HF; apply p. 
-    destruct HG; apply p.  
-    intros x y z n c. destruct HF, HG. clear p p0.
-    pose (FF := cellGHom n (A [x, y].1 ** A [y, z].1)
-                         (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@ z].1)
-                         (prod_hom' (F<<x,y>>) (F<<y,z>>)) c).
-    specialize (c1 (F @@ x) (F @@ y) (F @@ z) n FF). simpl in *.
-    specialize (c0 x y z n c).
-    pose (ap (cellGHom n (B [F @@ x, F @@ z].1) (C [G @@ (F @@ x), G @@ (F @@ z)].1) (G << F @@ x, F @@ z >>)) c0).
-    repeat rewrite eq_cell_comp in e.
-    etransitivity. Focus 2.
-    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (A [x, z]).1 (B [F @@ x, F @@ z].1)
-                          (C [G @@ (F @@ x), G @@ (F @@ z)].1) c compo (F << x, z >>) (G << F @@ x, F @@ z >>)).
-    etransitivity; try apply e.
-    clear e c0.
-    unfold FF in c1. clear FF.
-    etransitivity. Focus 2. apply eq_sym.
-    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@z].1)
-                          (B [F @@ x, F @@ z].1) (C [G @@ (F @@ x), G @@ (F @@ z)].1) c
-                          (prod_hom' (F << x, y >>) (F << y, z >>)) compo (G << F @@ x, F @@ z >>)).
-    repeat rewrite eq_cell_comp in c1.
-    etransitivity; try apply c1.
-    etransitivity. Focus 2. 
-    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@z].1)
-                          (C [G @@ (F @@ x), G @@ (F @@ y)].1 ** C [G @@ (F @@ y), G @@ (F @@ z)].1)
-                          (C [G @@ (F @@ x), G @@ (F @@ z)].1) c
-                          (prod_hom' (F << x, y >>) (F << y, z >>))
-                          (prod_hom' (G << F @@ x, F @@ y >>) (G << F @@ y, F @@ z >>)) compo).
-    repeat rewrite <- eq_cell_comp.
-    rewrite <- (eq_cell_comp n (A [x, y].1 ** A [y, z].1)
-                             (C [G @@ (F @@ x), G @@ (F @@ y)].1 ** C [G @@ (F @@ y), G @@ (F @@ z)].1)
-                             (C [G @@ (F @@ x), G @@ (F @@ z)].1) c (prod_hom' ((G << F @@ x, F @@ y >>) °° (F << x, y >>))
-                                                  ((G << F @@ y, F @@ z >>) °° (F << y, z >>))) compo).
-    apply ap2; try reflexivity. apply eq_sym.
-    repeat rewrite eq_cell_comp. apply prod_hom'_comp.
-  - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG HF.
-    generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
-    cofix. intros.
-    apply mkPreservesId. Focus 2. intros. simpl.
-    refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
-    destruct HF'; apply p. 
-    destruct HG'; apply p.  
-    clear ωComp. intros. destruct HF', HG'. clear p p0.
-    simpl. etransitivity. apply ap. apply e. apply e0.
-Defined.
-
-Definition commutativeSquare_Id T U V f :
-  @commutativeSquareHere (piω V) (canonicalSquare _)  (piω T ** piω U) (piω V) (piω T ** piω U)
-                    f (prod_hom' (GId _) (GId _)) f (GId _).
-  intro n. generalize dependent V. generalize dependent U. generalize dependent T. induction n; intros. 
-  - destruct cG. reflexivity. 
-  - destruct cG as [[[x x'] [y y']] c]. refine (path_sigma' _ _ _). reflexivity. simpl. unfold id. 
-    apply IHn.
-Defined. 
-
-Program Definition ωFunctor_Id {T} : ωFunctor (piW T) (piW T) := (GId (pi T); _).
-Next Obligation. split.
-- generalize dependent T. cofix. intros.
-  apply mkPreservesCompo.
-  + clear ωFunctor_Id_obligation_1. simpl. unfold id. 
-    intros. apply commutativeSquare_Id.
-  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
-- generalize dependent T. cofix. intros.
-  apply mkPreservesId.
-  + intros; reflexivity.
-  + intros. simpl. apply (ωFunctor_Id_obligation_1 (x=y)).
-Defined.
-
-Notation "g °° f" := (ωComp f g) (at level 20).
-
-Axiom HH_fun : ωcat -> Type.
+Axiom HH_fun : wild_ωcat -> Type.
 
 Axiom HH_η : ∀ {C}, ωFunctor C (piW (HH_fun C)).
 
 Axiom HH : ∀ C T, IsEquiv (fun (f:ωFunctor (piW (HH_fun C)) (piW T)) => f °° HH_η).
-
-Notation "f @@ x" := (app f.1 x) (at level 20) : type_scope.
-
-Definition map' G H (f : ωFunctor G H) (x x' : |G|) : ωFunctor (G [x,x']) (H [f @@ x, f @@ x']).
-  exists (f.1 <<x, x'>>). destruct f as [f Hf]. destruct Hf.
-  split. destruct p; apply p.  destruct p0; apply p0.
-Defined.
-
-Notation "f << x , x' >>" := (map' f x x') (at level 80).
 
 (* Definition of S1 using our homotopy hypothesis *)
 
@@ -116,20 +34,11 @@ Definition injS1 : ωFunctor ωS1 (piW S1) := ωFunctor_Id °° HH_η.
 
 Definition base : S1 := injS1 @@ tt.
 
-Definition univalent_to_path (G:Univalent_ωcat) x y (e:|G.1[x,y]|) : x = y.
-  destruct G. destruct i. exact (@equiv_inv _ _ _ (i x y) e).
-Defined.
-
-Definition _univalent_hom (G:Univalent_ωcat) x y : IsUnivalent (G.1[x,y]).
-  destruct G. destruct i. exact (i0 x y).
-Defined.
-
-Definition univalent_hom (G:Univalent_ωcat) x y : Univalent_ωcat :=
-  (G.1[x,y]; _univalent_hom G x y).
-
 Definition loop := (injS1 <<tt,tt>> @@ 1) : base = base.
   
 Definition piω' T := (piW T; piIsUnivalent T).
+
+Notation " A ==> B " := (A.1 ==> B.1) (at level 90).
 
 CoFixpoint ω_eq_refl T (x y :T) (e:x=y) : ω_terminal ==> piW (x=y).
 refine (mkGHom _ _ _ _).
@@ -166,7 +75,7 @@ Definition path_product A B A' B' (eA : A = A') (eB: B = B') : (A ** B) = (A' **
   destruct eA, eB. reflexivity. 
 Defined.
 
-Definition transport_hom_CGS1 (B:ωcat) n m (e : n = m) (f : ω_terminal ==> B) :
+Definition transport_hom_CGS1 (B:wild_ωcat) n m (e : n = m) (f : ω_terminal ==> B) :
   transport_hom (CGS1_eq_terminal e) eq_refl (transport_hom (inverse (CGS1_eq_terminal e)) eq_refl f) = f.
   rewrite transport_hom_concat. rewrite inverse_inv_L. reflexivity. 
 Defined.
@@ -229,20 +138,18 @@ Definition _S1_rec (P : Type) (b : P) (l : b = b) :
        * intros. admit.
 Defined. 
 
-Definition S1_rec (P : Type) (b : P) (l : b = b) : S1 -> P :=
-  app (ψ (@_S1_rec P b l)).1.
+(* Constructor L(S_1)_rec of Theorem 14*)
 
-Definition equal_GHom A B (f g : ωFunctor A B) x : f = g -> f @@ x = g @@ x.
-  destruct 1. reflexivity.
-Defined.
+Definition S1_rec (T : Type) (b : T) (l : b = b) : S1 -> T :=
+  app (ψ (@_S1_rec T b l)).1.
 
 Definition HH_η_law S T (f:ωFunctor S (piW T))  (x:|S|):
   ψ f @@ (ωFunctor_Id °° HH_η @@ x) = f @@ x :=
-  equal_GHom x (@eisretr _ _ _ (HH S T) f).
+  ap2 _ (@eisretr _ _ _ (HH S T) f)..1 eq_refl.
   
 Definition transport_equal_GHom A B (f g : ωFunctor A B) x y (e : f = g) (e' : |A[x,y]|) :
-  transport (fun X => |B[X, g @@ y]|) (equal_GHom x e)
-            (transport (fun X => |B[f @@ x, X]|) (equal_GHom y e) (f <<x,y>> @@ e')) =
+  transport (fun X => |B[X, g @@ y]|) (ap2 _ e..1 eq_refl)
+            (transport (fun X => |B[f @@ x, X]|) (ap2 _ e..1 eq_refl) (f <<x,y>> @@ e')) =
   (g <<x,y>> @@ e').
   destruct e. reflexivity.
 Defined. 
@@ -251,6 +158,8 @@ Definition piW_ap_hom T U (f : ωFunctor (piW T) (piW U)) x y (e:x=y) : ap (app 
   destruct e. destruct f as [f [H' H]]. 
   symmetry. apply H.  
 Defined. 
+
+(* Computational laws L(S_1)_beta* of Theorem 14*)
 
 Definition S1_rec_beta_base (P : Type) (b : P) (l : b = b) : S1_rec l base = b
   := @HH_η_law ωS1 P _ tt.

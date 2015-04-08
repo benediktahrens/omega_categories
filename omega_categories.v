@@ -282,7 +282,7 @@ mkAssociativity :
         (∀ (x y :   |G|), @associativity (G [x,y]) _) ->
         associativity G.
 
-(* ωCategory parametrized with CommutativeTriangle and CommutativeSquare *)
+(* wild_ωcategory parametrized with CommutativeTriangle and CommutativeSquare *)
 
 Class IsOmegaCategory (G : ωPreCat) (CT:CommutativeTriangle G) (CS:CommutativeSquare G) :=
   mkIsOmegaCategory {
@@ -341,11 +341,11 @@ Definition canonicalSquare G := GHom_eq_to_commutative_Square GHom_eq_cell G.
 
 (* definition of ω-categories (Definition 10 in TLCA paper) *)
 
-Definition ωcat := {G: ωPreCat & IsOmegaCategory G
+Definition wild_ωcat := {G: ωPreCat & IsOmegaCategory G
                                (GHom_eq_to_commutative_Triangle GHom_eq_cell G)
                                (GHom_eq_to_commutative_Square GHom_eq_cell G)}.
 
-Definition ωFunctor (G H: ωcat) := { f:G.1 ==> H.1 & @IsωFunctor G.1 H.1 f (canonicalSquare _)}.
+Definition ωFunctor (G H: wild_ωcat) := { f:G.1 ==> H.1 & @IsωFunctor G.1 H.1 f (canonicalSquare _)}.
 
 (* some basic definitions to lift the structure of ωPreCat *)
 
@@ -353,26 +353,26 @@ Notation "| G |" := (objects G.1.1) (at level 80).
 
 Hint Extern 1 (IsOmegaCategory (?T.1) _ _) => apply (T.2) : typeclass_instances.
 
-Definition compo_ωFunctorHom (G : ωcat) (x y : |G|) : @compo_ωFunctor
+Definition compo_ωFunctorHom (G : wild_ωcat) (x y : |G|) : @compo_ωFunctor
   (G.1 [x,y]) (canonicalSquare _).
   destruct (@_compo_ωFunctor _ _ _ G.2) as [_ comp1].
   exact (comp1 x y).
 Defined.
 
-Definition idRHom (G : ωcat) (x y : |G|) : @unitalityR (G.1[x,y]) (canonicalTriangle _).
+Definition idRHom (G : wild_ωcat) (x y : |G|) : @unitalityR (G.1[x,y]) (canonicalTriangle _).
 destruct (@_idR _ _ _ G.2) as [_ idup]. exact (idup x y).
 Defined.
 
-Definition idLHom (G : ωcat) (x y : |G|) : @unitalityL (G.1[x,y]) (canonicalTriangle _).
+Definition idLHom (G : wild_ωcat) (x y : |G|) : @unitalityL (G.1[x,y]) (canonicalTriangle _).
 destruct (@_idL _ _ _ G.2) as [_ idup]. exact (idup x y).
 Defined.
 
-Definition assocHom (G : ωcat) (x y : |G|) : @associativity
+Definition assocHom (G : wild_ωcat) (x y : |G|) : @associativity
                                                (G.1 [x,y]) (canonicalSquare _).
   destruct (@_assoc _ _ _ G.2) as [_ comp1]. exact (comp1 x y).
 Defined.
 
-Definition hom'' (G:ωcat) (x y : |G|) : ωcat := 
+Definition hom'' (G:wild_ωcat) (x y : |G|) : wild_ωcat := 
   (G.1[x,y]; {| _idR := idRHom G x y ;
                 _idL := idLHom G x y ; 
                 _assoc := assocHom G x y;
@@ -380,24 +380,24 @@ Definition hom'' (G:ωcat) (x y : |G|) : ωcat :=
 
 Notation "G [ A , B ]" := (hom'' G A B) (at level 80).
 
-Definition idL {G:ωcat} {x y : |G| } (f : |G [x,y]|) : f ° identity x = f.
+Definition idL {G:wild_ωcat} {x y : |G| } (f : |G [x,y]|) : f ° identity x = f.
   destruct G as [G a]. destruct a as [iR iL a]. destruct iL as [comp0 comp1]. simpl in *.
   specialize (comp0 x y). exact (comp0 0 (tt,f)).
 Defined.
 
-Definition idR {G:ωcat} {x y : |G| } (f : |G [x,y]|) : identity y ° f = f.
+Definition idR {G:wild_ωcat} {x y : |G| } (f : |G [x,y]|) : identity y ° f = f.
   destruct G as [G a]. destruct a as [iR iL a]. destruct iR as [comp0 comp1]. simpl in *.
   specialize (comp0 x y). exact (comp0 0 (f,tt)).
 Defined.
 
-Definition assoc {G : ωcat} {x y z w : |G| }
+Definition assoc {G : wild_ωcat} {x y z w : |G| }
            (f : |G [x,y]|) (g : |G [y,z]|) (h : |G [z,w]|): 
   (h ° g) ° f = h ° (g ° f).
 destruct G as [G a]. destruct a. destruct _assoc0 as [comp0 comp1]. simpl in *.
 specialize (comp0 x y z w). exact (comp0 0 (f,(g,h))).
 Defined.
 
-(* Definition of univalence ωcat *)
+(* Definition of univalence wild_ωcat *)
 
 Definition section {A B : Type} (s : A -> B) (r : B -> A) :=
   forall x : A, r (s x) = x.
@@ -409,24 +409,24 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
 }.
 
-Definition cell_path_gen {A} (G : ωcat) {x y :A} (P : A -> |G|) :
+Definition cell_path_gen {A} (G : wild_ωcat) {x y :A} (P : A -> |G|) :
   x = y -> |G[P x, P y]| :=
   fun e => transport (fun X => |G [P x, P X]|) e (identity (P x)). 
 
-Definition cell_path (G : ωcat) (x y : |G|) (e : x = y) : |G[x,y]| :=
+Definition cell_path (G : wild_ωcat) (x y : |G|) (e : x = y) : |G[x,y]| :=
   cell_path_gen G id e.
 
 (* univalent categories (Definition 16) *)
 
-CoInductive IsUnivalent (G : ωcat) :=
+CoInductive IsUnivalent (G : wild_ωcat) :=
   mkIsUnivalent :
     (∀ (x y : |G|), IsEquiv (@cell_path G x y)) ->
     (∀ (x y : |G|), IsUnivalent (G[x,y])) ->
     IsUnivalent G.
 
-Definition Univalent_ωcat := {G : ωcat & IsUnivalent G}.
+Definition Univalent_wild_ωcat := {G : wild_ωcat & IsUnivalent G}.
 
-Definition Univ_embedding : Univalent_ωcat -> ωcat := fun G => G.1.
+Definition Univ_embedding : Univalent_wild_ωcat -> wild_ωcat := fun G => G.1.
 
 Notation " A ==> B " := (A.1 ==> B.1) (at level 90).
 
@@ -435,8 +435,8 @@ Definition IsUnivalent_here G (univ : IsUnivalent G) (x y :|G|) :
   destruct univ. exact (i x y).
 Defined.
 
-(* CoInductive weak_equivalence : ∀ (G H: ωcat) (f : G ==> H), Type :=  *)
-(*   mkWeakEquivalence : ∀ (G H: ωcat) (f : G ==> H),  *)
+(* CoInductive weak_equivalence : ∀ (G H: wild_ωcat) (f : G ==> H), Type :=  *)
+(*   mkWeakEquivalence : ∀ (G H: wild_ωcat) (f : G ==> H),  *)
 (*     (∀ y : |H|, {x:|G| & |H[f @@ x,y]| }) ->  *)
 (*     (∀ x x' : |G|, weak_equivalence (G[x,x']) (H[f @@ x,f @@ x']) (f<<x,x'>>)) ->  *)
 (*     weak_equivalence G H f. *)
@@ -444,7 +444,7 @@ Defined.
 
 (* Duals (Definition 17 of TLCA paper) *)
 
-CoInductive hasDual (G : ωcat) : Type :=
+CoInductive hasDual (G : wild_ωcat) : Type :=
   mkHasDual : 
       (* the law *)
       (∀ (x y : |G|) (f:|G[x,y]|),
@@ -457,12 +457,12 @@ CoInductive hasDual (G : ωcat) : Type :=
 
 (* Equivalence and reversible cells (Definition 18 of TLCA paper) *)
 
-CoInductive equivalence (G : ωcat) (x y : |G|) : Type :=
+CoInductive equivalence (G : wild_ωcat) (x y : |G|) : Type :=
 mkequivalence : 
     (* the law *)
     { f : |G[x,y]| & reversible G x y f}  ->
     equivalence G x y
-with reversible (G : ωcat) (x y : |G|) : ∀ (f : |G[x,y]|), Type :=
+with reversible (G : wild_ωcat) (x y : |G|) : ∀ (f : |G[x,y]|), Type :=
 mkIsInv : 
   ∀ (f : |G[x,y]|), 
     (* the law *)
@@ -473,7 +473,7 @@ mkIsInv :
 
 (* Weak inverses (Definition 19 of TLCA paper) *)
 
-CoInductive hasInverse (G : ωcat) : Type :=
+CoInductive hasInverse (G : wild_ωcat) : Type :=
   mkHasInverse : 
       (* the law *)
       (∀ (x y : |G|) (f:|G[x,y]|), reversible G x y f) ->
@@ -481,29 +481,29 @@ CoInductive hasInverse (G : ωcat) : Type :=
       (∀ x y  : |G|, hasInverse (G [x,y])) ->
       hasInverse G.
 
-Definition hasDual_pi1 {G : ωcat} (dualG : hasDual G) (x y : |G|) (f:|G[x,y]|) :
+Definition hasDual_pi1 {G : wild_ωcat} (dualG : hasDual G) (x y : |G|) (f:|G[x,y]|) :
   {inverse_f : |G[y,x]| &
         (|G[y,y][f ° inverse_f, identity _]| *
          |G[x,x][inverse_f ° f, identity _]|)%type }.
   destruct dualG. exact (s _ _ _).
 Defined.
 
-Definition hasDual_pi2 {G : ωcat} (dualG : hasDual G)
+Definition hasDual_pi2 {G : wild_ωcat} (dualG : hasDual G)
            (x y : |G|) : hasDual (G[x,y]).
   destruct dualG. exact (h _ _).
 Defined.
 
-Definition hasInverse_pi1 {G : ωcat} (dualG : hasInverse G)
+Definition hasInverse_pi1 {G : wild_ωcat} (dualG : hasInverse G)
            (x y : |G|) (f:|G[x,y]|) : reversible G x y f.
   destruct dualG. exact (r _ _ _).
 Defined.
 
-Definition hasInverse_pi2 {G : ωcat} (dualG : hasInverse G)
+Definition hasInverse_pi2 {G : wild_ωcat} (dualG : hasInverse G)
            (x y : |G|) : hasInverse (G[x,y]).
   destruct dualG. exact (h _ _).
 Defined.
 
-CoFixpoint hasDual_to_reversible {G : ωcat}
+CoFixpoint hasDual_to_reversible {G : wild_ωcat}
   (dualG : hasDual G) (x y : |G|) (f:|G[x,y]|) : reversible G x y f.
 apply mkIsInv. exists ((hasDual_pi1 dualG x y f).1). split.
   { apply mkequivalence. exists (fst ((hasDual_pi1 dualG x y f).2)).
@@ -518,9 +518,11 @@ Defined.
    [An ω-category with all duals is an ω-groupoid] *)
 (* This is Proposition 3 of TLCA paper *)
 
-CoFixpoint hasDual_to_hasInverse (G : ωcat) :
+CoFixpoint hasDual_to_hasInverse (G : wild_ωcat) :
   hasDual G -> hasInverse G.
 intro dual. apply mkHasInverse.
 - intros x y f. exact (hasDual_to_reversible dual x y f). 
 - destruct dual. exact (fun x y => hasDual_to_hasInverse _ (h x y)).
 Defined.
+
+

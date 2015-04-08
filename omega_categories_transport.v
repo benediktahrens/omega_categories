@@ -676,9 +676,96 @@ intros [X Xs]. refine (mkcompo_ωFunctor _ _ _); intros.
 - exact (compo_ωFunctor_gen_compo_ωFunctor_canonical (G[x,y]) _ (Xs x y)).
 Defined. 
 
+(* Some basic properties of functors *)
+
+Definition commutativeSquare_Id T U V f :
+  @commutativeSquareHere V (canonicalSquare _)  (T ** U) V (T ** U)
+                    f (prod_hom' (GId _) (GId _)) f (GId _).
+  intro n. generalize dependent V. generalize dependent U. generalize dependent T. induction n; intros.
+  - destruct cG. reflexivity.
+  - destruct cG as [[[x x'] [y y']] c]. refine (path_sigma' _ _ _). reflexivity. simpl. unfold id.
+    apply (IHn (T[x,y]) (U[x',y']) (V [f @@ (x, x'), f @@ (y, y')]) (f << (x, x'), (y, y') >>) c).
+Defined.
+
+Notation "G [ A , B ]" := (hom'' G A B) (at level 80).
+
+Definition ωComp {A B C} (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
+  exists (G.1 °° F.1).
+  split.
+  - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG' HF'.
+    generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
+    cofix. intros.
+    apply mkPreservesCompo. Focus 2. intros. simpl.
+    refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
+    destruct HF; apply p. 
+    destruct HG; apply p.  
+    intros x y z n c. destruct HF, HG. clear p p0.
+    pose (FF := cellGHom n (A [x, y].1 ** A [y, z].1)
+                         (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@ z].1)
+                         (prod_hom' (F<<x,y>>) (F<<y,z>>)) c).
+    specialize (c1 (F @@ x) (F @@ y) (F @@ z) n FF). simpl in *.
+    specialize (c0 x y z n c).
+    pose (ap (cellGHom n (B [F @@ x, F @@ z].1) (C [G @@ (F @@ x), G @@ (F @@ z)].1) (G << F @@ x, F @@ z >>)) c0).
+    repeat rewrite eq_cell_comp in e.
+    etransitivity. Focus 2.
+    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (A [x, z]).1 (B [F @@ x, F @@ z].1)
+                          (C [G @@ (F @@ x), G @@ (F @@ z)].1) c compo (F << x, z >>) (G << F @@ x, F @@ z >>)).
+    etransitivity; try apply e.
+    clear e c0.
+    unfold FF in c1. clear FF.
+    etransitivity. Focus 2. apply eq_sym.
+    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@z].1)
+                          (B [F @@ x, F @@ z].1) (C [G @@ (F @@ x), G @@ (F @@ z)].1) c
+                          (prod_hom' (F << x, y >>) (F << y, z >>)) compo (G << F @@ x, F @@ z >>)).
+    repeat rewrite eq_cell_comp in c1.
+    etransitivity; try apply c1.
+    etransitivity. Focus 2. 
+    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@z].1)
+                          (C [G @@ (F @@ x), G @@ (F @@ y)].1 ** C [G @@ (F @@ y), G @@ (F @@ z)].1)
+                          (C [G @@ (F @@ x), G @@ (F @@ z)].1) c
+                          (prod_hom' (F << x, y >>) (F << y, z >>))
+                          (prod_hom' (G << F @@ x, F @@ y >>) (G << F @@ y, F @@ z >>)) compo).
+    repeat rewrite <- eq_cell_comp.
+    rewrite <- (eq_cell_comp n (A [x, y].1 ** A [y, z].1)
+                             (C [G @@ (F @@ x), G @@ (F @@ y)].1 ** C [G @@ (F @@ y), G @@ (F @@ z)].1)
+                             (C [G @@ (F @@ x), G @@ (F @@ z)].1) c (prod_hom' ((G << F @@ x, F @@ y >>) °° (F << x, y >>))
+                                                  ((G << F @@ y, F @@ z >>) °° (F << y, z >>))) compo).
+    apply ap2; try reflexivity. apply eq_sym.
+    repeat rewrite eq_cell_comp. apply prod_hom'_comp.
+  - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG HF.
+    generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
+    cofix. intros.
+    apply mkPreservesId. Focus 2. intros. simpl.
+    refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
+    destruct HF'; apply p. 
+    destruct HG'; apply p.  
+    clear ωComp. intros. destruct HF', HG'. clear p p0.
+    simpl. etransitivity. apply ap. apply e. apply e0.
+Defined.
 
 
 
+Program Definition ωFunctor_Id {C} : ωFunctor C C := (GId C.1.1; _).
+Next Obligation. split.
+- generalize dependent C. cofix. intros.
+  apply mkPreservesCompo.
+  + clear ωFunctor_Id_obligation_1. simpl. unfold id. 
+    intros. apply commutativeSquare_Id.
+  + intros. simpl. apply (ωFunctor_Id_obligation_1 (C[x,y])).
+- generalize dependent C. cofix. intros.
+  apply mkPreservesId.
+  + intros; reflexivity.
+  + intros. simpl. apply (ωFunctor_Id_obligation_1 (C[x,y])).
+Defined.
 
 
+Notation "f @@ x" := (app f.1 x) (at level 20) : type_scope.
 
+Notation "| G |" := (objects G.1.1) (at level 80).
+
+Definition map' G H (f : ωFunctor G H) (x x' : |G|) : ωFunctor (G [x,x']) (H [f @@ x, f @@ x']).
+  exists (f.1 <<x, x'>>). destruct f as [f Hf]. destruct Hf.
+  split. destruct p; apply p.  destruct p0; apply p0.
+Defined.
+
+Notation "g °° f" := (ωComp f g) (at level 20).

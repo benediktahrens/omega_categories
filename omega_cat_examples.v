@@ -24,18 +24,7 @@ Definition empty : GType := Delta Empty.
 
 CoFixpoint Discrete (X0 : Type) : GType := @mkGType X0 (fun _ _ => empty).
 
-(** The circle S1 *)
-
-Definition Decidable_to_bool P (H : Decidable P) : bool :=
-  match H with
-      inl _ => true
-    | inr _ => false
-  end. 
-  
-Definition GS1 := @mkGType unit (λ _ _ : unit,
-                  @mkGType nat  (λ z z', if Decidable_to_bool (decpaths_nat z z') 
-                                         then terminal
-                                         else empty)).
+(** Some technical definitions *)
 
 Definition transport_IsωPreCat G G' (e:G = G') (compG : IsωPreCat G) :
   e # compG = {| _comp := e # (@_comp _ compG); _id := e # (@_id _ compG) |}.
@@ -48,6 +37,12 @@ Definition path_IsωPreCat G (compG compG' : IsωPreCat G) :
   destruct compG,compG'; simpl.
   intros e e'; destruct e, e'. reflexivity.
 Defined.
+
+Definition Decidable_to_bool P (H : Decidable P) : bool :=
+  match H with
+      inl _ => true
+    | inr _ => false
+  end. 
 
 Definition decpaths_nat_refl g : decpaths_nat g g = inl eq_refl.
   induction g.
@@ -90,20 +85,11 @@ Definition decpaths_nat_refl' g g' (e: g = g') : {e' : g = g' & decpaths_nat g g
     simpl. rewrite e0. reflexivity. 
 Defined.
 
-Definition GS1_eq_terminal (g g':nat) : g = g' -> (GS1 [tt, tt]) [g, g'] = terminal.
-  destruct 1. unfold hom'; simpl. rewrite decpaths_nat_refl. reflexivity.
-Defined.
-
-Definition GS1_neq_empty (g g':nat) : ~~ g = g' -> (GS1 [tt, tt]) [g, g'] = empty.
-  unfold hom'; simpl; intro H. rewrite (decpaths_nat_neq H).2. reflexivity.
-Defined.
-
-(* Definition GS1 := @mkGType unit (fun _ _ => @mkGType Z (fun _ _ => terminal)). *)
+(** Definitions around empty (initial) and terminal objects *)
 
 CoFixpoint init_empty (G : GType) : empty ==> G :=
   mkGHom empty G (fun x => match x with end)
          (fun x y => (init_empty _)). 
-
 
 Instance composable_id_left (G : GType) : Composable terminal G G.
   econstructor. generalize dependent G; cofix. 
@@ -150,48 +136,6 @@ Definition transport_hom_GType {G G' H H':GType} (e:H = G) (e' : H' = G') :
            G ==> G' -> H ==> H'. 
   destruct e, e'. exact id.
 Defined.
-
-Definition Compo_S1 : Compo GS1.
-apply mkCompo; intros. 
-- econstructor. apply (mkGHom (product (hom GS1 x y) (hom GS1 y z)) (hom GS1 x z)
-                              (fun z => fst z + snd z)).
-  + destruct x, y ,z. intros [e e'] [h h'].
-    exact (match decpaths_nat e h with
-             | inl H => match decpaths_nat e' h' with
-                          | inl H' => transport_hom_GType
-                                        (ap2 _ (GS1_eq_terminal H) (GS1_eq_terminal H'))
-                                        (GS1_eq_terminal (ap2 plus H H'))
-                                        (@compo _ _ _ (composable_id_left _))
-                          | inr H' => transport_hom_GType
-                                        (ap2 _ eq_refl (GS1_neq_empty H'))
-                                        eq_refl
-                                        (@compo _ _ _ (uncomposable_right _ _))
-                        end
-             | inr H =>  transport_hom_GType
-                                        (ap2 _ (GS1_neq_empty H) eq_refl)
-                                        eq_refl
-                                        (@compo _ _ _ (uncomposable_left _ _))
-           end).
-- apply mkCompo; intros; simpl.
-   + destruct (decpaths_nat x0 y0); destruct (decpaths_nat y0 z); destruct (decpaths_nat x0 z);
-     simpl; intros; try apply composable_id_left; try apply composable_id_right;
-     try apply uncomposable_left; try apply uncomposable_right.
-     destruct (n (e @ e0)).
-   + destruct (decpaths_nat x0 y0); try apply Compo_terminal; apply Compo_empty.
-Defined.
-
-Definition Id_S1 : Id GS1.
-  apply mkId.
-  - intro. exact 0.
-  - intros x y. destruct x, y.  apply mkId.
-    + intro z. rewrite (GS1_eq_terminal (eq_refl z)). exact tt.
-    + intros z z'. simpl. destruct (decpaths_nat z z'). apply Id_terminal. apply Id_empty.
-Defined.
-
-Instance CompoGType_S1 : IsωPreCat GS1 := 
-{| _comp := Compo_S1; _id := Id_S1|}. 
-
-Definition CGS1 : ωPreCat := (GS1; CompoGType_S1).
 
 Notation "G [ A , B ]" := (hom' G A B) (at level 80).
 
@@ -318,71 +262,16 @@ apply mkcompo_ωFunctor.
 - intros. apply compo_ωFunctor_empty.
 Defined.
 
-Definition CGS1_eq_terminal (g g':nat) : g = g' -> (CGS1 [tt, tt]) [g, g'] = ωterminal.
-  destruct 1. unfold hom'; simpl. refine (path_sigma' _ _ _).
-  - rewrite decpaths_nat_refl. reflexivity.
-  - rewrite transport_IsωPreCat. apply path_IsωPreCat; simpl.
-    + unfold compoHom. simpl. rewrite decpaths_nat_refl. reflexivity. 
-    + unfold idHom. simpl. rewrite decpaths_nat_refl. reflexivity. 
-Defined.
-
-Definition CGS1_neq_empty (g g':nat) : ~~ g = g' -> (CGS1 [tt, tt]) [g, g'] = CGempty.
-  unfold hom'; simpl; intro H. refine (path_sigma' _ _ _).
-  - rewrite (decpaths_nat_neq H).2. reflexivity.
-  - rewrite transport_IsωPreCat. apply path_IsωPreCat; simpl.
-    + unfold compoHom. simpl. rewrite (decpaths_nat_neq H).2. reflexivity. 
-    + unfold idHom. simpl. rewrite (decpaths_nat_neq H).2. reflexivity. 
-Defined.
 
 Definition path_unitalityR G H `(H = G) :
   @unitalityR G (canonicalTriangle _) -> @unitalityR H (canonicalTriangle _).
   destruct H0. exact id.
 Defined. 
 
-Definition unitalityR_S1 : @unitalityR CGS1 (@canonicalTriangle _).
-apply mkUnitalityR.
-- intros. destruct x, y. intros n c. destruct n.
-  + apply Plus.plus_0_r.
-  + destruct c as [[[x x'] [y y']] c]. destruct x', y'.
-    refine (path_sigma' _ _ _). simpl. refine (path_prod _ _ _ _).
-    apply Plus.plus_0_r. apply Plus.plus_0_r. 
-    case (decpaths_nat x y); intro H. 
-    apply (terminal_is_hprop (CGS1_eq_terminal H)).
-    apply (empty_is_false (CGS1_neq_empty H)).
-- intros. destruct x, y.
-  apply mkUnitalityR; intros x y.  
-  case (decpaths_nat x y); intros H c n.
-  apply (terminal_is_hprop (CGS1_eq_terminal H)).
-  apply (empty_is_false (CGS1_neq_empty H)). 
-  case (decpaths_nat x y); intros H.
-  apply (path_unitalityR (CGS1_eq_terminal H) unitalityR_terminal). 
-  apply (path_unitalityR (CGS1_neq_empty H) unitalityR_empty). 
-Defined. 
-
 Definition path_unitalityL G H `(H = G) :
   @unitalityL G (canonicalTriangle _) -> @unitalityL H (canonicalTriangle _).
   destruct H0. exact id.
 Defined. 
-
-Definition unitalityL_S1 : @unitalityL CGS1 (@canonicalTriangle _).
-apply mkUnitalityL.
-- intros. destruct x, y. intros n c. destruct n.
-  + apply Plus.plus_0_l.
-  + destruct c as [[[x' x] [y' y]] c]. destruct x', y'.
-    refine (path_sigma' _ _ _). simpl. refine (path_prod _ _ _ _).
-    apply Plus.plus_0_l. apply Plus.plus_0_l.
-    case (decpaths_nat x y); intro H.
-    apply (terminal_is_hprop (CGS1_eq_terminal H)).
-    apply (empty_is_false (CGS1_neq_empty H)).
-- intros. destruct x, y.
-  apply mkUnitalityL; intros x y.  
-  case (decpaths_nat x y); intros H c n.
-  apply (terminal_is_hprop (CGS1_eq_terminal H)).
-  apply (empty_is_false (CGS1_neq_empty H)). 
-  case (decpaths_nat x y); intros H.
-  apply (path_unitalityL (CGS1_eq_terminal H) unitalityL_terminal). 
-  apply (path_unitalityL (CGS1_neq_empty H) unitalityL_empty). 
-Defined.
 
 CoFixpoint preservesCompo_empty_domL G H (f : CGempty ** G ==> H):
   @preservesCompo _ _ f (canonicalSquare _).
@@ -441,6 +330,139 @@ Defined.
 Definition path_compo_ωFunctor H H' (e : H = H') :
   @compo_ωFunctor H (canonicalSquare _) -> @compo_ωFunctor H' (canonicalSquare _).
   destruct e. exact id.
+Defined.
+
+
+Definition path_associativity H H' (e : H = H') :
+  @associativity H (canonicalSquare _) -> @associativity H' (canonicalSquare _).
+  destruct e. exact id.
+Defined.
+
+
+Instance terminal_IsOmegaCategory : IsOmegaCategory ωterminal _ _ :=
+  {| _idR := unitalityR_terminal ;
+     _idL := unitalityL_terminal ;
+     _compo_ωFunctor := compo_ωFunctor_terminal;
+     _assoc := associativity_terminal
+|}.
+
+Definition ω_terminal : wild_ωcat := (ωterminal; terminal_IsOmegaCategory).
+
+(** The omega category of the circle S1 *)
+
+Definition GS1 := @mkGType unit (λ _ _ : unit,
+                  @mkGType nat  (λ z z', if Decidable_to_bool (decpaths_nat z z') 
+                                         then terminal
+                                         else empty)).
+
+Notation "G [ A , B ]" := (hom G A B) (at level 80).
+
+Definition GS1_eq_terminal (g g':nat) : g = g' -> (GS1 [tt, tt]) [g, g'] = terminal.
+  destruct 1. unfold hom'; simpl. rewrite decpaths_nat_refl. reflexivity.
+Defined.
+
+Definition GS1_neq_empty (g g':nat) : ~~ g = g' -> (GS1 [tt, tt]) [g, g'] = empty.
+  unfold hom'; simpl; intro H. rewrite (decpaths_nat_neq H).2. reflexivity.
+Defined.
+
+Definition Compo_S1 : Compo GS1.
+apply mkCompo; intros. 
+- econstructor. apply (mkGHom (product (hom GS1 x y) (hom GS1 y z)) (hom GS1 x z)
+                              (fun z => fst z + snd z)).
+  + destruct x, y ,z. intros [e e'] [h h'].
+    exact (match decpaths_nat e h with
+             | inl H => match decpaths_nat e' h' with
+                          | inl H' => transport_hom_GType
+                                        (ap2 _ (GS1_eq_terminal H) (GS1_eq_terminal H'))
+                                        (GS1_eq_terminal (ap2 plus H H'))
+                                        (@compo _ _ _ (composable_id_left _))
+                          | inr H' => transport_hom_GType
+                                        (ap2 _ eq_refl (GS1_neq_empty H'))
+                                        eq_refl
+                                        (@compo _ _ _ (uncomposable_right _ _))
+                        end
+             | inr H =>  transport_hom_GType
+                                        (ap2 _ (GS1_neq_empty H) eq_refl)
+                                        eq_refl
+                                        (@compo _ _ _ (uncomposable_left _ _))
+           end).
+- apply mkCompo; intros; simpl.
+   + destruct (decpaths_nat x0 y0); destruct (decpaths_nat y0 z); destruct (decpaths_nat x0 z);
+     simpl; intros; try apply composable_id_left; try apply composable_id_right;
+     try apply uncomposable_left; try apply uncomposable_right.
+     destruct (n (e @ e0)).
+   + destruct (decpaths_nat x0 y0); try apply Compo_terminal; apply Compo_empty.
+Defined.
+
+Definition Id_S1 : Id GS1.
+  apply mkId.
+  - intro. exact 0.
+  - intros x y. destruct x, y.  apply mkId.
+    + intro z. rewrite (GS1_eq_terminal (eq_refl z)). exact tt.
+    + intros z z'. simpl. destruct (decpaths_nat z z'). apply Id_terminal. apply Id_empty.
+Defined.
+
+Instance CompoGType_S1 : IsωPreCat GS1 := 
+{| _comp := Compo_S1; _id := Id_S1|}. 
+
+Definition CGS1 : ωPreCat := (GS1; CompoGType_S1).
+
+Notation "G [ A , B ]" := (hom' G A B) (at level 80).
+
+Definition CGS1_eq_terminal (g g':nat) : g = g' -> (CGS1 [tt, tt]) [g, g'] = ωterminal.
+  destruct 1. unfold hom'; simpl. refine (path_sigma' _ _ _).
+  - rewrite decpaths_nat_refl. reflexivity.
+  - rewrite transport_IsωPreCat. apply path_IsωPreCat; simpl.
+    + unfold compoHom. simpl. rewrite decpaths_nat_refl. reflexivity. 
+    + unfold idHom. simpl. rewrite decpaths_nat_refl. reflexivity. 
+Defined.
+
+Definition CGS1_neq_empty (g g':nat) : ~~ g = g' -> (CGS1 [tt, tt]) [g, g'] = CGempty.
+  unfold hom'; simpl; intro H. refine (path_sigma' _ _ _).
+  - rewrite (decpaths_nat_neq H).2. reflexivity.
+  - rewrite transport_IsωPreCat. apply path_IsωPreCat; simpl.
+    + unfold compoHom. simpl. rewrite (decpaths_nat_neq H).2. reflexivity. 
+    + unfold idHom. simpl. rewrite (decpaths_nat_neq H).2. reflexivity. 
+Defined.
+
+Definition unitalityR_S1 : @unitalityR CGS1 (@canonicalTriangle _).
+apply mkUnitalityR.
+- intros. destruct x, y. intros n c. destruct n.
+  + apply Plus.plus_0_r.
+  + destruct c as [[[x x'] [y y']] c]. destruct x', y'.
+    refine (path_sigma' _ _ _). simpl. refine (path_prod _ _ _ _).
+    apply Plus.plus_0_r. apply Plus.plus_0_r. 
+    case (decpaths_nat x y); intro H. 
+    apply (terminal_is_hprop (CGS1_eq_terminal H)).
+    apply (empty_is_false (CGS1_neq_empty H)).
+- intros. destruct x, y.
+  apply mkUnitalityR; intros x y.  
+  case (decpaths_nat x y); intros H c n.
+  apply (terminal_is_hprop (CGS1_eq_terminal H)).
+  apply (empty_is_false (CGS1_neq_empty H)). 
+  case (decpaths_nat x y); intros H.
+  apply (path_unitalityR (CGS1_eq_terminal H) unitalityR_terminal). 
+  apply (path_unitalityR (CGS1_neq_empty H) unitalityR_empty). 
+Defined. 
+
+Definition unitalityL_S1 : @unitalityL CGS1 (@canonicalTriangle _).
+apply mkUnitalityL.
+- intros. destruct x, y. intros n c. destruct n.
+  + apply Plus.plus_0_l.
+  + destruct c as [[[x' x] [y' y]] c]. destruct x', y'.
+    refine (path_sigma' _ _ _). simpl. refine (path_prod _ _ _ _).
+    apply Plus.plus_0_l. apply Plus.plus_0_l.
+    case (decpaths_nat x y); intro H.
+    apply (terminal_is_hprop (CGS1_eq_terminal H)).
+    apply (empty_is_false (CGS1_neq_empty H)).
+- intros. destruct x, y.
+  apply mkUnitalityL; intros x y.  
+  case (decpaths_nat x y); intros H c n.
+  apply (terminal_is_hprop (CGS1_eq_terminal H)).
+  apply (empty_is_false (CGS1_neq_empty H)). 
+  case (decpaths_nat x y); intros H.
+  apply (path_unitalityL (CGS1_eq_terminal H) unitalityL_terminal). 
+  apply (path_unitalityL (CGS1_neq_empty H) unitalityL_empty). 
 Defined.
 
 CoFixpoint compo_ωFunctor_S1 : @compo_ωFunctor CGS1 (canonicalSquare _).
@@ -516,11 +538,6 @@ apply mkcompo_ωFunctor.
     apply compo_ωFunctor_empty.
 Defined.
 
-Definition path_associativity H H' (e : H = H') :
-  @associativity H (canonicalSquare _) -> @associativity H' (canonicalSquare _).
-  destruct e. exact id.
-Defined.
-
 CoFixpoint associativity_S1 : @associativity CGS1 (canonicalSquare _).
 apply mkAssociativity. 
 - intros x y z t n c. destruct x, y, z, t. destruct n.
@@ -570,15 +587,6 @@ apply mkAssociativity.
     apply associativity_empty.
 Defined.
 
-Instance terminal_IsOmegaCategory : IsOmegaCategory ωterminal _ _ :=
-  {| _idR := unitalityR_terminal ;
-     _idL := unitalityL_terminal ;
-     _compo_ωFunctor := compo_ωFunctor_terminal;
-     _assoc := associativity_terminal
-|}.
-
-Definition ω_terminal : ωcat := (ωterminal; terminal_IsOmegaCategory).
-
 Instance S1_IsOmegaCategory : IsOmegaCategory CGS1 _ _ :=
   {| _idR := unitalityR_S1;
      _idL := unitalityL_S1;
@@ -586,5 +594,5 @@ Instance S1_IsOmegaCategory : IsOmegaCategory CGS1 _ _ :=
      _assoc := associativity_S1
 |}.
 
-Definition ωS1 : ωcat := (CGS1; S1_IsOmegaCategory).
+Definition ωS1 : wild_ωcat := (CGS1; S1_IsOmegaCategory).
 

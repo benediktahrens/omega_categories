@@ -10,6 +10,8 @@ Notation "| G |" := (objects G) (at level 80).
 Notation "G [ A , B ]" := (hom G A B) (at level 80).
 Notation "A ** B" := (product A B) (at level 90).
 Notation " A ==> B " := (GHom A B) (at level 90).
+Notation "g °° f" := (GComp f g) (at level 20).
+Notation "f @@ x" := (app f x) (at level 20) : type_scope.
 
 (* Definition of the fundamental ωPreCat (Definition 12 of TLCA paper) *)
 
@@ -47,7 +49,7 @@ Instance pi_IsωPreCat (T : Type) : IsωPreCat (pi T) :=
 Definition piω (T:Type) : ωPreCat := (pi T; pi_IsωPreCat T).
 
 
-(** Now, a lot of work to prove that it forms an ωcat *)
+(** Now, a lot of work to prove that it forms an wild_ωcat *)
 
 Notation "G [ A , B ]" := (hom' G A B) (at level 80).
 
@@ -1960,7 +1962,7 @@ apply mkCompoIdL.
 Defined.
 
 
-(* piω T is a ωcat (Theorem 13 of TLCA paper) *)
+(* piω T is a wild_ωcat (Theorem 13 of TLCA paper) *)
 
 Instance pi_IsOmegaCategory (T : Type) : IsOmegaCategory (piω T)
                         (GHom_eq_to_commutative_Triangle GHom_eq_cell _)
@@ -1973,12 +1975,12 @@ Instance pi_IsOmegaCategory (T : Type) : IsOmegaCategory (piω T)
      _assoc := assoc_gen_assoc_canonical _ (pi_associativity T)
 |}.
 
-Definition piW T : ωcat := (piω T; pi_IsOmegaCategory T).
+Definition piW T : wild_ωcat := (piω T; pi_IsOmegaCategory T).
 
 Definition picellpath_fun (T : Type) (x y : |piω T|)
            (e : |(piω T)[x, y]|) : x = y := e.
 
-(* piω T is a univalent ωcat (Proposition 1 of TLCA paper) *)
+(* piω T is a univalent wild_ωcat (Proposition 1 of TLCA paper) *)
 
 Definition piIsUnivalent_retr (T:Type) (x y : T) :
   section (@picellpath_fun _ x y) (cell_path (piW T) x y).
