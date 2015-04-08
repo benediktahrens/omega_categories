@@ -2,7 +2,7 @@ Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import BinInt Even List Heap Le Plus Minus.
 Require Import Omega. 
-Require Import path GType omega_categories. 
+Require Import path GType omega_categories omega_categories_transport. 
 
 Set Implicit Arguments.
 
@@ -11,7 +11,7 @@ Notation "G [ A , B ]" := (hom G A B) (at level 80).
 Notation "A ** B" := (product A B) (at level 90).
 Notation " A ==> B " := (GHom A B) (at level 90).
 
-(* On attaque la def de omega-gpd *)
+(* Definition of the fundamental ωPreCat (Definition 12 of TLCA paper) *)
 
 CoFixpoint pi (T : Type) : GType := @mkGType (T) (fun x y => pi (x = y)).
 
@@ -47,6 +47,8 @@ Instance pi_IsωPreCat (T : Type) : IsωPreCat (pi T) :=
 Definition piω (T:Type) : ωPreCat := (pi T; pi_IsωPreCat T).
 
 
+(** Now, a lot of work to prove that it forms an ωcat *)
+
 Notation "G [ A , B ]" := (hom' G A B) (at level 80).
 
 Notation "| G |" := (objects G.1) (at level 80).
@@ -54,24 +56,6 @@ Notation "| G |" := (objects G.1) (at level 80).
 Notation "A ** B" := (prod' A B) (at level 90).
 
 Notation " A ==> B " := (A.1 ==> B.1) (at level 90).
-
-(* a more inlined version of idCompo *)
-
-CoInductive idCompoH (G H K : ωPreCat) {composable : Composable G.1 H.1 K.1} : Type :=
-  mkIdCompoH :
-    (* the law *)
-    (∀ (f : |G|) (g : |H|), (identity g) ° (identity f) = identity (g ° f)) ->
-    (* the co-induction step *)
-    (∀ (f f' : |G|) (g g' : |H|), @idCompoH (G[f,f']) (H[g,g']) (K[g°f,g'°f']) _) ->
-    idCompoH G H K.
-
-CoInductive idCompo (G : ωPreCat) : Type :=
-mkIdCompo : 
-    (* the law *)
-    (∀ x y z : |G|, idCompoH (G[x,y]) (G[y,z]) (G[x,z])) ->
-    (* the co-induction step *)
-    (∀ x y   : |G|, idCompo (G [x,y])) ->
-    idCompo G.
 
 Definition  pi_idCompo_gen_eq (T U V : Type) (f : T -> U -> V)  (x y : T) (z w : U)
            (P : (x = y) -> (z = w) -> (f x z = f y w))
@@ -93,7 +77,7 @@ CoFixpoint pi_idCompo_gen (T U V : Type) (f : T -> U -> V)  (x y : T) (z w : U)
            (e e' : x = y) (h h' : z = w) :
   idCompoH (piω (x = y) [e,e']) (piω (z = w) [h,h']) 
            (piω (f x z = f y w) [P e h, P e' h']) :=
-  mkIdCompoH (fun E H => pi_idCompo_gen_eq f P E H) 
+  mkIdCompoH _ _ _ (fun E H => pi_idCompo_gen_eq f P E H) 
              (fun E E' H H' => pi_idCompo_gen P (ap2 P (h':=h')) E E' H H').
 
 Definition pi_idCompoH (T : Type) (x y z :T) : 
@@ -107,12 +91,11 @@ apply mkIdCompoH.
 Defined.
 
 CoFixpoint pi_idCompo (T : Type) : idCompo (piω T) :=
-  mkIdCompo (fun (x y z : |piω T|) => pi_idCompoH x y z) 
+  mkIdCompo _ (fun (x y z : |piω T|) => pi_idCompoH x y z) 
             (fun x y => pi_idCompo (x = y)).
 
-
 CoFixpoint piω_transport_GHom_eq (T:Type) : transport_GHom_eq_type (piω T)
-  := mkTransport_GHom_eq_type
+  := mkTransport_GHom_eq_type _ 
     (@transport_GHomL (piω T)) 
     (@transport_GHomR (piω T))
     (λ x y, piω_transport_GHom_eq (x = y)).
@@ -120,325 +103,80 @@ CoFixpoint piω_transport_GHom_eq (T:Type) : transport_GHom_eq_type (piω T)
 Instance piω_transport_eq (T:Type) : _transport_eq (piω T) :=
   {| transport_GHom_eq := piω_transport_GHom_eq T |}.
 
-CoInductive Id_ind'' : ∀ (A B: ωPreCat) (f : A ==> B), Type :=
-  mkId_ind'' : ∀ (A B: ωPreCat) (f : A ==> B),
-               (∀ x, (f << x,x >>) @@ identity x = identity (f @@ x)) ->
-               (∀ x y, Id_ind'' (A[x,y]) (B[f @@ x, f @@ y]) (f << x,y >>)) ->
-               Id_ind'' A B f.
+(*** connexion to the Cellular Approach ***)
 
-Definition Id_ind''_here (A B: ωPreCat) (f : A ==> B) (H : Id_ind'' A B f) x :
-               (f << x,x >>) @@ identity x = identity (f @@ x).
-destruct H. apply e.
-Defined.
-  
-Definition Id_ind''_hom (A B: ωPreCat) (f : A ==> B) (H : Id_ind'' A B f) x y :
-               Id_ind'' (A[x,y]) (B[f @@ x, f @@ y]) (f << x,y >>).
-destruct H. apply i.
+(*** J for cells ***)
+
+Fixpoint identity_cell n (G:ωPreCat) (x:|G|) {struct n} : cell n (G[x,x]).
+destruct n.
+- exact (identity x).
+- exact ((identity x, identity x); identity_cell n  (G [x, x]) (identity x)). 
 Defined.
 
-Definition transport_GHomL_eq_J_i_eq_gen_eq (T T':Type) (f g : piω T ==> piω T')
-           (x y : T) (e : forall x, f @@ x = g @@ x)
-           (f_refl: Id_ind'' _ _ f) (g_refl: Id_ind'' _ _  g) E :
-          (@transport_GHomL_eq_J (piω T') _ _ _ (inverse (e x)) °°
-              (@transport_GHomR_eq_J (piω T') _ _ _  (e y) °° (f << x,y >>))) @@ E =
-          (g << x, y >>) @@ E.
-  destruct E. simpl. repeat rewrite transport_paths_r.
-  unfold identity; simpl. setoid_rewrite (Id_ind''_here f_refl x).
-  setoid_rewrite (Id_ind''_here g_refl x). apply inverse_inv_L.
+Fixpoint J_cell n (T:Type) (x:|piω T|) 
+         (P : forall y, cell n ((piω T)[x,y]) -> Type) y
+         (c : cell n (piω T [x, y]))
+         (e : P x (identity_cell n _ x)) {struct n} : P y c.
+destruct n.
+- destruct c. exact e.
+- simpl in *. destruct c as [(c1,c2) c]. destruct c1.
+  exact (J_cell n (x = x) eq_refl (fun y c => P x ((eq_refl,y); c)) _ _ e).
 Defined.
 
-CoFixpoint Id_ind''_append_right (C C'' D E: Type)
-           (g : piω C ==> piω C'')
-           (h : |piω D|)
-           (k : C'' -> D -> E)
-           (a1 a2 : C)
-           (x1 x2 : | piω (a1= a2)|)
-           (H : Id_ind'' (piω (x1= x2)) (piω ((g << a1, a2 >>) @@ x1 =
-                                                          (g << a1, a2 >>) @@ x2))
-                        ((g << a1, a2 >>) << x1, x2 >>))
-           (compoK := piComp_V k)
- : Id_ind''  (piω (x1 = x2))
-            (piω (identity h ° ((g << a1, a2 >>) @@ x1) =
-                        identity h ° ((g << a1, a2 >>) @@ x2)))
-            ((@append_right
-                  (piω (g @@ a1= g @@ a2))
-                  (piω (h= h))
-                  (piω (_ = _))
-                  ((g << a1,a2 >>) @@ x1)
-                  ((g << a1,a2 >>) @@ x2)
-                  (identity h) _)
-         °° ((g <<a1,a2>>) <<x1,x2>>)).
+Arguments J_cell : clear implicits.
 
-apply mkId_ind''. intro y1; simpl.
-setoid_rewrite (Id_ind''_here H y1). reflexivity.
-intros y1 y2. simpl.
-exact (Id_ind''_append_right (a1 = a2) (g @@ a1 = g @@ a2) (h = h) (k (g @@ a1) h = k (g @@ a2) h)
-                           (g << a1, a2 >>) (identity h) (@ap2 _ _ _ k _ _ _ _) x1 x2
-     y1 y2 (Id_ind''_hom H y1 y2)).
+(*** piω_transport_eq is compatible with transport of cells ***)
+
+
+Fixpoint append_left_refl n (T U V : Type) (f : T → U → V) (x : T) (z : U)
+           (X : | piω (x = x) ** piω (z = z) |)
+           (_comp := piComp_V (ap2 f (h':=z)) (fst X) (fst X) (snd X) (snd X)) {struct n} :
+ identity_cell n (piω (ap2 f (fst X) (snd X) = ap2 f (fst X) (snd X))) eq_refl =
+ cellGHom n (piω (snd X = snd X) [eq_refl, eq_refl])
+           (piω (ap2 f (fst X) (snd X) = ap2 f (fst X) (snd X)) [
+  eq_refl ° eq_refl, eq_refl ° eq_refl])
+           (@append_left (piω (fst X = fst X)) (piω (snd X = snd X))
+            (piω (ap2 f (fst X) (snd X) = ap2 f (fst X) (snd X))) eq_refl eq_refl eq_refl _comp)
+           (identity_cell n (piω (snd X = snd X)) eq_refl).
+destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+exact (append_left_refl n (x = x) (z = z) (f x z = f x z) (ap2 f (h':=z)) (fst X) (snd X) 
+                             (eq_refl, eq_refl)). 
 Defined.
 
-CoFixpoint Id_ind''_append_left (C C'' D E: Type)
-           (g : piω C ==> piω C'')
-           (h : |piω D|)
-           (k : D -> C'' -> E)
-           (a1 a2 : C)
-           (x1 x2 : | piω (a1= a2)|)
-           (H : Id_ind'' (piω (x1= x2)) (piω ((g << a1, a2 >>) @@ x1 =
-                                                          (g << a1, a2 >>) @@ x2))
-                        ((g << a1, a2 >>) << x1, x2 >>))
-           (compoK := piComp_V k)
- : Id_ind''  (piω (x1 = x2))
-            (piω (((g << a1, a2 >>) @@ x1) ° identity h =
-                        ((g << a1, a2 >>) @@ x2) ° identity h))
-            ((@append_left
-                  (piω (h= h))
-                  (piω (g @@ a1= g @@ a2))
-                  (piω (_ = _))
-                  (identity h)
-                  ((g << a1,a2 >>) @@ x1)
-                  ((g << a1,a2 >>) @@ x2)
-                   _)
-         °° ((g <<a1,a2>>) <<x1,x2>>)).
-apply mkId_ind''. intro y1; simpl.
-setoid_rewrite (Id_ind''_here H y1). reflexivity.
-intros y1 y2. simpl.
-exact (Id_ind''_append_left (a1 = a2) (g @@ a1 = g @@ a2) (h = h) (k h (g @@ a1) = k h (g @@ a2))
-                           (g << a1, a2 >>) (identity h) (@ap2 _ _ _ k _ _ _ _) x1 x2
-     y1 y2 (Id_ind''_hom H y1 y2)).
+Fixpoint append_right_refl n (T U V : Type) (f : T → U → V) (x : T) (z : U)
+           (X : | piω (x = x) ** piω (z = z) |)
+           (_comp := piComp_V (ap2 f (h':=z)) (fst X) (fst X) (snd X) (snd X)) {struct n} :
+ identity_cell n (piω (ap2 f (fst X) (snd X) = ap2 f (fst X) (snd X))) eq_refl =
+ cellGHom n (piω (fst X = fst X) [eq_refl, eq_refl])
+           (piω (ap2 f (fst X) (snd X) = ap2 f (fst X) (snd X)) [
+  eq_refl ° eq_refl, eq_refl ° eq_refl])
+           (@append_right (piω (fst X = fst X)) (piω (snd X = snd X))
+            (piω (ap2 f (fst X) (snd X) = ap2 f (fst X) (snd X))) eq_refl eq_refl eq_refl _comp)
+           (identity_cell n (piω (fst X = fst X)) eq_refl).
+destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+exact (append_right_refl n (x = x) (z = z) (f x z = f x z) (ap2 f (h':=z)) (fst X) (snd X) 
+                             (eq_refl, eq_refl)). 
 Defined.
 
-CoFixpoint transport_GHomL_eq_J_i_eq_gen (T T':Type) (f g : piω T ==> piω T')  
-           (x y : T) (e : forall x, f @@ x = g @@ x) 
-           (f_refl: Id_ind'' _ _ f) (g_refl: Id_ind'' _ _  g) :
-  @GHom_eq (piω T [x,y]) (piω T' [g @@ x, g @@ y]) 
-          (@transport_GHomL_eq_J (piω T') _ _ _ (inverse (e x)) °° 
-              (@transport_GHomR_eq_J (piω T') _ _ _ (e y) °° (f << x,y >>)))
-          (g << x, y >>).
-refine (@mkGHom_eq_J (piω T [x, y]) (piω T' [g @@ x, g @@ y]) _ _ _ _).
-exact (transport_GHomL_eq_J_i_eq_gen_eq x y e f_refl g_refl). 
-intros. apply (transport_GHomL_eq_J_i_eq_gen (x = y) (g @@ x = g @@ y) 
-              (@transport_GHomL_eq_J (piω T') _ _ _ (inverse (e x)) °° 
-               (@transport_GHomR_eq_J (piω T') _ _ _ (e y) °° (f << x,y >>)))
-              (g << x, y >>) x0 y0 
-             (transport_GHomL_eq_J_i_eq_gen_eq x y e f_refl g_refl)).
-
-clear x0 y0. apply mkId_ind''. intro x1; simpl.
-setoid_rewrite (Id_ind''_here (Id_ind''_hom f_refl x y) x1). reflexivity. 
-intros x1 y1. simpl.
-
-apply mkId_ind''. intro x2; simpl in *.
-pose (Id_ind''_here (Id_ind''_hom (Id_ind''_hom f_refl x y) x1 y1) x2).
-setoid_rewrite e0.
-reflexivity. 
-intros.
-apply (@Id_ind''_append_left (x = y) (f @@ x = g @@ y)  (g @@ x = f @@ x) (g @@ x = g @@ y)
-     (@transport_GHomR_eq_J (piω T') _ _ _  (e y) °° (f << x,y >>))
-     (transport (λ X : T', g @@ x = X) 
-               (inverse (e x)) (identity (g @@ x))) concat x1 y1 x0 y0).
-exact (@Id_ind''_append_right (x = y) (f @@ x = f @@ y) (f @@ y = g @@ y) (f @@ x = g @@ y)
-                             (f << x,y >>)
-     (transport (λ X : T', f @@ y = X) (e y) (identity (f @@ y))) concat x1 y1 x0 y0
-     (Id_ind''_hom (Id_ind''_hom (Id_ind''_hom f_refl x y) x1 y1) x0 y0)).
-
-exact (Id_ind''_hom g_refl _ _). 
-Defined.
-
-
-CoFixpoint append_left_id_ind'' {T T' U : Type}
-           (k : T ->  T' -> U)
-           (compK := piComp_V k)
-           (f : |piω T|) (x0 y0 : |piω T'|) (x1 y1 : |piω (x0 = y0)|) :
-  Id_ind'' (piω (x1 = y1)) (piω (x1 ° (identity f) = y1 ° (identity f)))
-          (append_left (identity f) x1 y1).
-apply mkId_ind''. intro H. destruct H. reflexivity. 
-intros. apply (append_left_id_ind'' (f = f) (x0 = y0) (k f x0 = k f y0) (@ap2 _ _ _ k _ _ _ _)).
-Defined.
-
-Definition transport_GHomL_eq_J_id_ind {T:Type} {x y z : T } (f : x = y) :
-  Id_ind'' (piω (y = z)) (piω (x = z)) (@transport_GHomL (piω T) x y z  f).
-apply mkId_ind''. intro H; destruct H. reflexivity.
-intros. apply mkId_ind''. intro H; destruct H. reflexivity.
-intros. simpl. apply (@append_left_id_ind'' (x = y) (y = z) (x = z) concat f).
-Defined.
-
-Definition transport_GHomL_eq_J_eq_fun {T:Type} {x y z : T } (f : x = y) H:
-   (@transport_GHomL_eq_J (piω T) x y z f) @@ H =
-   (@transport_GHomL (piω T) x y z f) @@ H :=  
-  concat_R H (transport_paths_r f eq_refl). 
-
-Definition transport_GHomL_eq_J_eq {T:Type} {x y z : T } (f : x = y) :
-  GHom_eq _ _ (@transport_GHomL_eq_J (piω T) x y z f) (@transport_GHomL (piω T) x y z f).
-apply (mkGHom_eq_J _ _ (fun e => transport_GHomL_eq_J_eq_fun f e)).
-intros. apply transport_GHomL_eq_J_i_eq_gen.
-apply transport_GHomL_eq_J_id_ind. 
-apply transport_GHomL_eq_J_id_ind.
-Defined.
-
-CoFixpoint append_right_id_ind'' {T' T U : Type}
-           (k : T' ->  T -> U)
-           (compK := piComp_V k)
-           (f : |piω T|) (x0 y0 : |piω T'|) (x1 y1 : |piω (x0 = y0)|) :
-  Id_ind'' (piω (x1 = y1)) (piω ((identity f) ° x1 = (identity f) ° y1))
-          (append_right x1 y1 (identity f)).
-apply mkId_ind''. intro H. destruct H. reflexivity.
-intros. apply (append_right_id_ind'' (x0 = y0) (f = f) (k x0 f = k y0 f) (@ap2 _ _ _ k _ _ _ _)).
-Defined.
-
-Definition transport_GHomR_eq_J_id_ind {T:Type} {x y z : T } (f : x = y) :
-  Id_ind'' (piω (z = x)) (piω (z = y)) (@transport_GHomR (piω T) z x y f).
-apply mkId_ind''. intro H; destruct H. reflexivity.
-intros. apply mkId_ind''. intro H; destruct H. reflexivity.
-intros. simpl. apply (@append_right_id_ind'' (z = x) (x = y) (z = y) concat f).
-Defined.
-
-Definition transport_GHomR_eq_J_eq_fun {T:Type} {x y z : T } (f : x = y) H:
-   (@transport_GHomR_eq_J (piω T) z x y f) @@ H =
-   (@transport_GHomR (piω T) z x y f) @@ H :=  
-  concat_L H (transport_paths_r f eq_refl). 
-
-Definition transport_GHomR_eq_J_eq {T:Type} {x y z : T } (f : x = y) :
-  GHom_eq _ _ (@transport_GHomR_eq_J (piω T) z x y f) (@transport_GHomR (piω T) z x y f).
-apply (mkGHom_eq_J _ _ (fun e => transport_GHomR_eq_J_eq_fun f e)).
-intros. apply transport_GHomL_eq_J_i_eq_gen.
-apply transport_GHomR_eq_J_id_ind. 
-apply transport_GHomR_eq_J_id_ind.
-Defined.
-
-CoFixpoint pi_transport_is_canonical T : @transport_is_canonical (piω T) _.
-apply mkTransport_compat.
-- intros. apply transport_GHomL_eq_J_eq.
-- intros. apply transport_GHomR_eq_J_eq.
-- intros. apply pi_transport_is_canonical.
+Definition piω_transport_eq_compat T : transport_eq_compat_type _ (piω_transport_eq T). 
+  generalize dependent T; cofix; intro T. 
+  apply mkTransport_eq_compat_type.
+  - intros. destruct e. apply (J_cell n T x (fun y e => _) y c). clear y c. 
+    destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+    destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+    destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+    exact (@append_left_refl n (x=x) (x=x) (x=x) concat eq_refl eq_refl (eq_refl,eq_refl)). 
+  - intros. destruct e. apply (J_cell n T x (fun y e => _) y c). clear y c.
+    destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+    destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+    destruct n; try reflexivity; apply path_sigma_uncurried; exists eq_refl; simpl.
+    exact (@append_right_refl n (x=x) (x=x) (x=x) concat eq_refl eq_refl (eq_refl,eq_refl)). 
+  - intros. exact (piω_transport_eq_compat (x = y)). 
 Defined.
 
 Instance piω_transport_eq' (T:Type) : transport_eq (piω T) :=
-  {| _transport_is_canonical := pi_transport_is_canonical T |}.
+  {| _transport_is_canonical := piω_transport_eq_compat T |}.
 
-(* a more inlined version of the interchange law *)
-
-Definition higher_composable {G1 G2 G H1 H2 H K1 K2 K : ωPreCat}
-     { _transport : transport_eq K}
-     {compG : Composable G1.1 G2.1 G.1}
-     {compH : Composable H1.1 H2.1 H.1}
-     {compK : Composable K1.1 K2.1 K.1} 
-     {comp1 : Composable G1.1 H1.1 K1.1}
-     {comp2 : Composable G2.1 H2.1 K2.1}
-     {compGHK : Composable G.1 H.1 K.1} 
-     (interchangeLaw : ∀ (f1 : |G1|) (f2 : |G2|) (g1 : |H1|) (g2 : |H2|),
-                     (g2 ° f2) ° (g1 ° f1) = (g2 ° g1) ° (f2 ° f1)) 
-     (f1 f'1 : |G1|) (f2 f'2 : |G2|) (g1 g'1 : |H1|) (g2 g'2 : |H2|) :
-  Composable (K1 [g1 ° f1, g'1 ° f'1]).1 (K2 [g2 ° f2, g'2 ° f'2]).1
-        (K [(g2 ° g1) ° (f2 ° f1), (g'2 ° g'1) ° (f'2 ° f'1)]).1 :=
-{|
-compo := transport_GHomL_eq_here (inverse (interchangeLaw f1 f2 g1 g2))
-         °° (transport_GHomR_eq_here (interchangeLaw f'1 f'2 g'1 g'2)
-             °° (compo << (g1 ° f1, g2 ° f2), (g'1 ° f'1, g'2 ° f'2) >>)) |}.
-
-
-CoInductive interchangeV (G1 G2 G H1 H2 H K1 K2 K : ωPreCat)
-            (_transport : transport_eq K)
-            {compG : Composable G1.1 G2.1 G.1}
-            {compH : Composable H1.1 H2.1 H.1}
-            (compK : Composable K1.1 K2.1 K.1)
-            {comp1 : Composable G1.1 H1.1 K1.1}
-            {comp2 : Composable G2.1 H2.1 K2.1}
-            {compGHK : Composable G.1 H.1 K.1} : Type :=
- mkInterchangeV :
-   {
-     (* the law *)
-     interchangeLaw : ∀ (f1 : |G1|) (f2 : |G2|) (g1 : |H1|) (g2 : |H2|),
-              (g2 ° f2) ° (g1 ° f1) = (g2 ° g1) ° (f2 ° f1) &
-     (* the co-induction step *)
-     ∀ (f1 f'1 : |G1|) (f2 f'2 : |G2|) (g1 g'1 : |H1|) (g2 g'2 : |H2|),
-       @interchangeV
-        (G1 [f1,f'1]) (G2 [f2,f'2]) (G [f2 ° f1, f'2  ° f'1])
-        (H1 [g1,g'1]) (H2 [g2,g'2]) (H [g2 ° g1, g'2 ° g'1])
-        (K1 [g1 ° f1, g'1 ° f'1]) (K2 [g2 ° f2, g'2 ° f'2])
-        (K [(g2 ° g1) ° (f2 ° f1), (g'2 ° g'1) ° (f'2 ° f'1)]) _
-        _ _ (higher_composable interchangeLaw _ _ _ _ _ _ _ _) _ _ _}   
-     ->
-     interchangeV G1 G2 G H1 H2 H K1 K2 _transport compK.
-
-(* Pour avoir un test a verifier pour la loi d'echange, une fois qu'on
-   a fixe x, y, z en dim d, il faut fixer f f' f'' et g g' g'' de dim
-   d+p resp. dans [x,y] et [y,z].
-   Le predicat suivant parcourt tout ces choix puis passe la main au predicat precedent.
-   Voir la suite pour comprendre quels sont ses parametres initiaux.
-*)
-
-CoInductive interchangeH (G H K : ωPreCat) (_transport : transport_eq K) 
-            {compGHK : Composable G.1 H.1 K.1}: Type :=
-  mkInterchangeH : 
-    (* the law *)
-    (∀ (f f' f'' : |G|) (g g' g'' : |H|),
-      interchangeV
-        (G [f, f']) (G [f', f'']) (G [f, f'']) 
-        (H [g, g']) (H [g', g'']) (H [g, g'']) 
-        (K [g ° f, g' ° f']) (K [g' ° f', g'' ° f'']) 
-        (transport_GHom_eq_hom' _) _) -> 
-    (* the co-induction step *)
-    (∀ (f f' : |G|) (g g' : |H|),
-      @interchangeH (G [f, f']) (H [g, g']) (K [g ° f, g' ° f']) _ _) ->
-      interchangeH G H _transport.
-
-CoInductive interchange (G : ωPreCat) (_transport : transport_eq G) : Type :=
-mkInterchange : 
-        (* the law *)
-        (∀ (x y z : |G|), 
-           @interchangeH (G [x,y]) (G [y,z]) (G [x,z]) _ _)
-        ->
-        (* the co-induction step *)
-        (∀ (x y :   |G|), @interchange (G [x,y]) _) ->
-        @interchange G _.
-
-
-CoFixpoint interchangeV_interchange (G1 G2 G H1 H2 H K1 K2 K : ωPreCat)
-            (_transport : transport_eq K)
-            {compG : Composable G1.1 G2.1 G.1}
-            {compH : Composable H1.1 H2.1 H.1}
-            (compK : Composable K1.1 K2.1 K.1)
-            {comp1 : Composable G1.1 H1.1 K1.1}
-            {comp2 : Composable G2.1 H2.1 K2.1}
-            {compGHK : Composable G.1 H.1 K.1} :
-  interchangeV G1 G2 G H1 H2 H K1 K2 _ compK ->
-  @commutativeSquare ((G1 ** H1)**(G2**H2)) (G**H) (K1**K2) _ _
-                    (prod_hom compG compH)
-                    (prod_hom' (@compo _ _ _ comp1) (@compo _ _ _ comp2))
-                    compo compo.
-intros [[i s]]. refine (mkCommutativeSquare _ _ _ _ _ _).
-- intros [[f1 g1] [f2 g2]]. exact (i f1 f2 g1 g2).
-- intros [[f1 g1] [f2 g2]] [[f1' g1'] [f2' g2']]. 
-  exact (interchangeV_interchange _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-                                   (s f1 f1' f2 f2' g1 g1' g2 g2')).
-Defined.
- 
-
-CoFixpoint interchangeH_interchange (G H K : ωPreCat) (_transport : transport_eq K) 
-           {compGHK : Composable G.1 H.1 K.1}:
-  interchangeH G H _transport -> preservesCompo (G**H) (@compo _ _ _ compGHK) _transport.
-intros [i s]. refine (mkPreservesCompo _ _ _).
-- intros [f g] [f' g'] [f'' g''].
-  exact (interchangeV_interchange (i f f' f'' g g' g'')).
-- intros [f g] [f' g']. 
-  exact (interchangeH_interchange _ _ _ _ _ (s f f' g g')).
-Defined.
-
-CoFixpoint idCompoH_preservesId (G H K : ωPreCat) {composable : Composable G.1 H.1 K.1} :
-  idCompoH G H K -> preservesId (G**H) K compo.
-intro Idcompo; destruct Idcompo. apply mkPreservesId.
-- intros. destruct x. apply e.
-- intros. destruct x, y.
-  exact (idCompoH_preservesId (G [o,o1]) (H[o0, o2]) (K [o0 ° o, o2 ° o1]) _ (i _ _ _ _)). 
-Defined.
-
-
-CoFixpoint interchange_idcompo_compo_ωFunctor (G : ωPreCat) (_transport : transport_eq G) :
-  @interchange G _ -> idCompo G -> @compo_ωFunctor G _.
-intros [i s] [id idh]. apply mkcompo_ωFunctor.
-- intros x y z. exact (interchangeH_interchange (i x y z),
-                       idCompoH_preservesId  (id x y z)).
-- intros x y. exact (interchange_idcompo_compo_ωFunctor  _ _ (s x y) (idh x y)).
-Defined.
 
 Instance piωComp_H (T : Type) (x y z : T) :
   Composable (piω (x = y)).1 (piω (y = z)).1 (piω (x = z)).1 :=
@@ -1147,87 +885,12 @@ apply mkInterchangeH.
 Defined.
 
 CoFixpoint pi_interchange (T:Type) : @interchange (piω T) _ :=
-  mkInterchange (fun (x y z : |piω T|) => pi_interchangeH x y z) 
+  mkInterchange _ (fun (x y z : |piω T|) => pi_interchangeH x y z) 
                 (fun x y => pi_interchange (x = y)).
 
-Definition pi_compo_ωFunctor (T:Type) : @compo_ωFunctor (piω T) _ :=
-  interchange_idcompo_compo_ωFunctor (pi_interchange T) (pi_idCompo T).
+Definition pi_compo_ωFunctor (T:Type) : compo_ωFunctor (piω T) :=
+  interchange_idcompo_compo_ωFunctor _ (pi_interchange T) (pi_idCompo T).
 
-
-(*** associativity law ***)
-
-Definition higher_composable_assoc {G1 G2 G3 G12 G23 G : ωPreCat}
-           {_transport : transport_eq G}
-           {comp12 : Composable G1.1 G2.1 G12.1}
-           {comp23 : Composable G2.1 G3.1 G23.1}
-           {comp12_3 : Composable G12.1 G3.1 G.1}
-           {comp1_23 : Composable G1.1 G23.1 G.1}
-     (associate : ∀ (f : |G1|) (g : |G2|) (h : |G3|),
-                   (h ° g) ° f = h ° (g ° f)) 
-     (f f' : |G1|) (g g' : |G2|) (h h' : |G3|)  :
-  Composable (G1[f,f']).1 (G23[h ° g, h' ° g']).1
-        (G[h ° (g ° f), h' ° (g' ° f')]).1 :=
-{| compo := transport_GHomL_eq_here (inverse (associate f g h))
-            °° (transport_GHomR_eq_here (associate f' g' h')
-               °° (compo << (f,h °g),(f',h'°g')>>)) |}.
-
-
-CoInductive associativityH (G1 G2 G3 G12 G23 G : ωPreCat)
-            (_transport : transport_eq G)
-            {comp12 : Composable G1.1 G2.1 G12.1}
-            {comp23 : Composable G2.1 G3.1 G23.1}
-            {comp12_3 : Composable G12.1 G3.1 G.1}
-            {comp1_23 : Composable G1.1 G23.1 G.1} : Type :=
-  mkAssociativityH :
-  {
-    (* The associativity law *)
-    associate : ∀ (f : |G1|) (g : |G2|) (h : |G3|),
-                  (h ° g) ° f = h ° (g ° f) &
-    (* The inductive step *)
-    ∀ (f f' : |G1|) (g g' : |G2|) (h h' : |G3|),
-    @associativityH (G1[f,f']) (G2[g,g']) (G3[h,h'])
-                    (G12[g ° f, g' ° f']) (G23[h ° g, h' ° g'])
-                    (G[h ° (g ° f), h' ° (g' ° f')])
-                    _ _ _ _  
-                    (higher_composable_assoc associate f f' g g' h h')
-  } ->
-  @associativityH G1 G2 G3 G12 G23 G _ comp12 comp23 comp12_3 comp1_23.
-
-
-CoInductive associativity' (G : ωPreCat) (_transport : transport_eq G) : Type := 
-mkAssociativity' :
-        (∀ (x y z t : |G|), 
-           @associativityH (G [x,y]) (G [y,z]) (G [z,t]) (G[x,z]) (G[y,t]) (G[x,t])
-                           _ _ _ _ _) ->
-        (* the co-induction step *)
-        (∀ (x y :   |G|), @associativity' (G [x,y]) _) ->
-        @associativity' G _.
-
-
-CoFixpoint assocH_assoc (G1 G2 G3 G12 G23 G : ωPreCat)
-            (_transport : transport_eq G)
-            {comp12 : Composable G1.1 G2.1 G12.1}
-            {comp23 : Composable G2.1 G3.1 G23.1}
-            {comp12_3 : Composable G12.1 G3.1 G.1}
-            {comp1_23 : Composable G1.1 G23.1 G.1} :
-  @associativityH G1 G2 G3 G12 G23 G _ _ _ _ _ ->
-  @commutativeSquare (G1 ** (G2 ** G3))
-                     (G12 ** G3) (G1 ** G23) G _ 
-                     (prod_hom1 G3.1 _)
-                     (prod_hom' (GId G1.1) (@compo _ _ _ _))
-                     (@compo _ _ _ _) (@compo _ _ _ _).
-intro H. refine (mkCommutativeSquare _ _ _ _ _ _).
-- intros. destruct H as [[a H]]. destruct x as [x [y z]]. apply a.
-- intros. destruct H as [[a H]]. destruct x as [f [g h]], y as [f' [g' h']]. 
-  apply (assocH_assoc _ _ _ _ _ _ _ _ _ _ _ (H f f' g g' h h')).
-Defined.
- 
-CoFixpoint assoc'_assoc (G : ωPreCat) (_transport : transport_eq G) :
-  @associativity' G _ -> @associativity G _.
-intro H. apply mkAssociativity.
-- intros. destruct H. apply assocH_assoc; auto.
-- intros. destruct H. apply assoc'_assoc; auto.
-Defined.
 
 Definition higher_composable_assoc_gen {G1 G2 G3 G12 G23 G123 : Type}
            {f12 : G1 → G2 → G12}
@@ -1680,7 +1343,7 @@ apply mkAssociativity'.
 - intros. apply pi_associativity'.
 Defined.
 
-Definition pi_associativity (T:Type) := assoc'_assoc (pi_associativity' T).
+Definition pi_associativity (T:Type) := assoc'_assoc _ (pi_associativity' T).
 
 Definition higher_composable_idR_gen {G H : Type} (h:H)
            {f : G → H → G} (idR : ∀ (g : | piω G |), f g h = g)
@@ -2297,42 +1960,44 @@ apply mkCompoIdL.
 Defined.
 
 
-(* piω T is a ωcat*)
+(* piω T is a ωcat (Theorem 13 of TLCA paper) *)
 
-Instance pi_IsOmegaCategory (T : Type) : IsOmegaCategory (piω T) :=
-  {| _tran := _;
-     _idR := pi_CompoIdR T ;
-     _idL := pi_CompoIdL T;
-     _compo_ωFunctor := pi_compo_ωFunctor T;
-     _assoc := pi_associativity T
+Instance pi_IsOmegaCategory (T : Type) : IsOmegaCategory (piω T)
+                        (GHom_eq_to_commutative_Triangle GHom_eq_cell _)
+                        (GHom_eq_to_commutative_Square GHom_eq_cell _):=
+  {| _idR := unitalityR_gen_unitalityR_canonical _
+               (compoIdR_unitalityR _ (pi_CompoIdR T));
+     _idL := unitalityL_gen_unitalityL_canonical _
+               (compoIdL_unitalityL _ (pi_CompoIdL T));
+     _compo_ωFunctor := compo_ωFunctor_gen_compo_ωFunctor_canonical _ (pi_compo_ωFunctor T);
+     _assoc := assoc_gen_assoc_canonical _ (pi_associativity T)
 |}.
 
 Definition piW T : ωcat := (piω T; pi_IsOmegaCategory T).
 
-
 Definition picellpath_fun (T : Type) (x y : |piω T|)
            (e : |(piω T)[x, y]|) : x = y := e.
 
-(* piω T is a univalent ωcat*)
+(* piω T is a univalent ωcat (Proposition 1 of TLCA paper) *)
 
 Definition piIsUnivalent_retr (T:Type) (x y : T) :
-  section (@picellpath_fun _ x y) (cell_path (piW T) (y:=y)).
+  section (@picellpath_fun _ x y) (cell_path (piW T) x y).
   intro e. destruct e. reflexivity.
 Defined.
   
 Definition piIsUnivalent_sect (T:Type) (x y : T) :
- section (cell_path (piW T) (y:=y)) (@picellpath_fun _ x y).
+ section (cell_path (piW T) x y) (@picellpath_fun _ x y).
   red. intros. destruct x0. reflexivity.
 Defined.
 
 CoFixpoint piIsUnivalent (T:Type) : IsUnivalent (piW T).
 apply mkIsUnivalent.
 - intros. 
-  apply (BuildIsEquiv (@piIsUnivalent_retr _ x y) 
+  apply (BuildIsEquiv _ _ _ _
+                      (@piIsUnivalent_retr _ x y) 
                       (@piIsUnivalent_sect _ x y)).
   intro e. destruct e. reflexivity.
 - intros x y. exact (piIsUnivalent (x = y)).
 Defined.
-
 
 

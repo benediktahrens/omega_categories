@@ -1,10 +1,9 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import Omega Integers truncation. 
-Require Import path GType omega_cat_examples  type_to_omega_cat omega_categories. 
+Require Import path GType omega_cat_examples type_to_omega_cat omega_categories_transport omega_categories. 
 
 Set Implicit Arguments.
-
 
 CoInductive IsRigid (G : ωcat) : Type :=
 mkId : IsHSet (|G|) ->
@@ -13,14 +12,6 @@ mkId : IsHSet (|G|) ->
 
 Definition Rigid_ωcat := {G: ωcat & IsRigid G}.
 
-
-Definition Univalent_ωcat := {G : ωcat & IsUnivalent G}.
-
-Definition Univ_embedding : Univalent_ωcat -> ωcat := fun G => G.1.
-
-Instance ωcat_transport (G:ωcat) : transport_eq G.1 := _tran.
-
-Definition ωFunctor (G H: ωcat) := { f:G==>H & IsωFunctor G.1 f _}.
 
 Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
   exists (G.1 °° F.1).
@@ -32,15 +23,39 @@ Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
     refine (ωComp (A[x,y]) (B[F @@ x, F @@ y]) (C [G @@ (F @@ x), G @@ (F @@ y)]) _ _ _ _ ).
     destruct HF; apply p. 
     destruct HG; apply p.  
-    clear ωComp. intros. destruct HF, HG. clear p p0.
-    generalize dependent c0. generalize dependent c.
-    generalize dependent G. generalize dependent F.
-    generalize A B C x y z. clear A B C x y z. cofix. intros. 
-    refine (mkCommutativeSquare _ _ _ _ _ _ ).
-    + clear ωComp. intros. specialize (c x y z). specialize (c0 (F @@ x) (F@@y) (F@@z)).
-      destruct c, c0. clear c c0.
-      exact (comm0 ((F << x, y >>) @@ (fst x0), (F << y, z >>) @@ (snd x0)) @ ap _ (comm x0)).
-    + intros. destruct c, c0, x0, y0. simpl. admit.
+    intros x y z n c. destruct HF, HG. clear p p0.
+    pose (FF := cellGHom n (A [x, y].1 ** A [y, z].1)
+                         (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@ z].1)
+                         (prod_hom' (F<<x,y>>) (F<<y,z>>)) c).
+    specialize (c1 (F @@ x) (F @@ y) (F @@ z) n FF). simpl in *.
+    specialize (c0 x y z n c).
+    pose (ap (cellGHom n (B [F @@ x, F @@ z].1) (C [G @@ (F @@ x), G @@ (F @@ z)].1) (G << F @@ x, F @@ z >>)) c0).
+    repeat rewrite eq_cell_comp in e.
+    etransitivity. Focus 2.
+    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (A [x, z]).1 (B [F @@ x, F @@ z].1)
+                          (C [G @@ (F @@ x), G @@ (F @@ z)].1) c compo (F << x, z >>) (G << F @@ x, F @@ z >>)).
+    etransitivity; try apply e.
+    clear e c0.
+    unfold FF in c1. clear FF.
+    etransitivity. Focus 2. apply eq_sym.
+    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@z].1)
+                          (B [F @@ x, F @@ z].1) (C [G @@ (F @@ x), G @@ (F @@ z)].1) c
+                          (prod_hom' (F << x, y >>) (F << y, z >>)) compo (G << F @@ x, F @@ z >>)).
+    repeat rewrite eq_cell_comp in c1.
+    etransitivity; try apply c1.
+    etransitivity. Focus 2. 
+    apply (eq_cell_assoc2 n (A [x, y].1 ** A [y, z].1) (B [F @@ x, F @@ y].1 ** B [F @@ y, F @@z].1)
+                          (C [G @@ (F @@ x), G @@ (F @@ y)].1 ** C [G @@ (F @@ y), G @@ (F @@ z)].1)
+                          (C [G @@ (F @@ x), G @@ (F @@ z)].1) c
+                          (prod_hom' (F << x, y >>) (F << y, z >>))
+                          (prod_hom' (G << F @@ x, F @@ y >>) (G << F @@ y, F @@ z >>)) compo).
+    repeat rewrite <- eq_cell_comp.
+    rewrite <- (eq_cell_comp n (A [x, y].1 ** A [y, z].1)
+                             (C [G @@ (F @@ x), G @@ (F @@ y)].1 ** C [G @@ (F @@ y), G @@ (F @@ z)].1)
+                             (C [G @@ (F @@ x), G @@ (F @@ z)].1) c (prod_hom' ((G << F @@ x, F @@ y >>) °° (F << x, y >>))
+                                                  ((G << F @@ y, F @@ z >>) °° (F << y, z >>))) compo).
+    apply ap2; try reflexivity. apply eq_sym.
+    repeat rewrite eq_cell_comp. apply prod_hom'_comp.
   - destruct F as [F [HF HF']], G as [G [HG HG']]. simpl. clear HG HF.
     generalize dependent G. generalize dependent F. generalize A B C. clear A B C.
     cofix. intros.
@@ -52,18 +67,14 @@ Definition ωComp A B C (F : ωFunctor A B) (G : ωFunctor B C) : ωFunctor A C.
     simpl. etransitivity. apply ap. apply e. apply e0.
 Defined.
 
-CoFixpoint commutativeSquare_Id T U V f :
-  commutativeSquare (piω T ** piω U) (piω V) (piω T ** piω U) (piω V)
-                    _ f (prod_hom' (GId _) (GId _)) f (GId _).
-    intros. refine (mkCommutativeSquare _ _ _ _ _ _ ).
-    * intros. destruct x. reflexivity.
-    * destruct x as [x x'], y as [y y']. simpl.
-      match goal with | |- commutativeSquare _ _ _ _ _ _ _ ?g _ =>
-                        assert (g = (f << (id x, id x'), (id y, id y') >>)) end.
-      admit.
-      rewrite H. exact (commutativeSquare_Id (x=y) (x'=y') (f @@ (x,x') = f @@ (y,y'))
-                                       (f << (x, x'), (y, y') >>)).
-Defined.
+Definition commutativeSquare_Id T U V f :
+  @commutativeSquareHere (piω V) (canonicalSquare _)  (piω T ** piω U) (piω V) (piω T ** piω U)
+                    f (prod_hom' (GId _) (GId _)) f (GId _).
+  intro n. generalize dependent V. generalize dependent U. generalize dependent T. induction n; intros. 
+  - destruct cG. reflexivity. 
+  - destruct cG as [[[x x'] [y y']] c]. refine (path_sigma' _ _ _). reflexivity. simpl. unfold id. 
+    apply IHn.
+Defined. 
 
 Program Definition ωFunctor_Id {T} : ωFunctor (piW T) (piW T) := (GId (pi T); _).
 Next Obligation. split.
@@ -86,7 +97,6 @@ Axiom HH_η : ∀ {C}, ωFunctor C (piW (HH_fun C)).
 
 Axiom HH : ∀ C T, IsEquiv (fun (f:ωFunctor (piW (HH_fun C)) (piW T)) => f °° HH_η).
 
-
 Notation "f @@ x" := (app f.1 x) (at level 20) : type_scope.
 
 Definition map' G H (f : ωFunctor G H) (x x' : |G|) : ωFunctor (G [x,x']) (H [f @@ x, f @@ x']).
@@ -101,8 +111,6 @@ Notation "f << x , x' >>" := (map' f x x') (at level 80).
 Definition S1 := HH_fun ωS1.
 
 Definition ψ S T := @equiv_inv _ _ _ (HH S T).
-
-(* Definition ψ {S T} := @equiv_inv _ _ _ (HH S T).2. *)
 
 Definition injS1 : ωFunctor ωS1 (piW S1) := ωFunctor_Id °° HH_η.
 
@@ -121,8 +129,6 @@ Definition univalent_hom (G:Univalent_ωcat) x y : Univalent_ωcat :=
 
 Definition loop := (injS1 <<tt,tt>> @@ 1) : base = base.
   
-(* Definition loop : base = base := univalent_to_path S1 _ _ _loop. *)
-
 Definition piω' T := (piW T; piIsUnivalent T).
 
 CoFixpoint ω_eq_refl T (x y :T) (e:x=y) : ω_terminal ==> piW (x=y).
@@ -145,7 +151,7 @@ destruct n0; simpl.
   apply ap2; try apply n_loop_plus; reflexivity.
 Defined.
 
-Definition _S1_rec_fun (P : Type) (b : P) (l : b = b) :
+Definition S1_rec_fun (P : Type) (b : P) (l : b = b) :
   ωS1 ==> (piω' P).1.
   refine (mkGHom _ _ _ _). 
 - intros _. exact b.
@@ -153,7 +159,7 @@ Definition _S1_rec_fun (P : Type) (b : P) (l : b = b) :
   + exact (n_loop l). 
   + destruct x, y. intros n n'. case (decpaths_nat n n'); intro e.
     * exact (transport_hom (inverse (CGS1_eq_terminal e)) eq_refl (ω_eq_refl (ap (n_loop l) e))).
-    * exact (transport_hom (B := piω (n_loop l n = n_loop l n')) (inverse (CGS1_neq_empty e)) eq_refl (init_empty _)).
+    * exact (transport_hom (G' := piω (n_loop l n = n_loop l n')) (inverse (CGS1_neq_empty e)) eq_refl (init_empty _)).
 Defined.
 
 Definition path_product A B A' B' (eA : A = A') (eB: B = B') : (A ** B) = (A' ** B').
@@ -165,21 +171,63 @@ Definition transport_hom_CGS1 (B:ωcat) n m (e : n = m) (f : ω_terminal ==> B) 
   rewrite transport_hom_concat. rewrite inverse_inv_L. reflexivity. 
 Defined.
 
-CoFixpoint commutativeSquare_emptyR A B C D _transport U F V G :
-  commutativeSquare (A ** CGempty) B C D _transport U F V G.
-refine (mkCommutativeSquare _ _ _ _ _ _);intros [a absurd]; inversion absurd.
-Defined.  
-    
-CoFixpoint commutativeSquare_emptyL A B C D _transport U F V G :
-  commutativeSquare (CGempty ** A) B C D _transport U F V G.
-refine (mkCommutativeSquare _ _ _ _ _ _);intros [absurd a]; inversion absurd.
-Defined.  
+CoFixpoint preservesCompo_empty_dom H (f : GHom CGempty.1 H.1):
+  @preservesCompo _ _ f (canonicalSquare _).
+apply mkPreservesCompo.
+- intros. intros n c.  match goal with | |- ?T =>
+       refine (@empty_is_false_fun _ _ n c (fun c => T))  end. 
+  apply prod_empty_R. apply GId.
+- intros x y. apply (preservesCompo_empty_dom).
+Defined.
+
 
 Definition _S1_rec (P : Type) (b : P) (l : b = b) :
   ωFunctor ωS1 (piω' P).1.
-  refine (existT _ _ _). exact (_S1_rec_fun l). 
-  admit. 
-Defined.
+  refine (existT _ (S1_rec_fun l) _). 
+  split.
+  - apply mkPreservesCompo.
+    + intros x y z. destruct x, y, z. intros n c. destruct n.
+      * apply n_loop_plus. 
+      * refine (path_sigma' _ _ _). refine (path_prod _ _ _ _); apply n_loop_plus.
+        destruct c as [[[x y] [x' y']] c]. 
+        case (decpaths_nat x x'); intro H.
+        case (decpaths_nat y y'); intro H'. simpl.
+        (* issue with dependent pattern matching *)
+        admit.  
+        match goal with | |- ?T =>
+                          refine (@empty_is_false_fun _ _ n c (fun c => T))  end. 
+        refine (prod_empty_R (ωS1[tt,tt][x,x']).1 (ωS1[tt,tt][y,y']).1 _).
+        apply (transport_hom (eq_sym (CGS1_neq_empty H')) eq_refl (GId _)).
+        match goal with | |- ?T =>
+                          refine (@empty_is_false_fun _ _ n c (fun c => T))  end. 
+        refine (prod_empty_L (ωS1[tt,tt][x,x']).1 (ωS1[tt,tt][y,y']).1 _).
+        apply (transport_hom (eq_sym (CGS1_neq_empty H)) eq_refl (GId _)).
+    + intros x y. destruct x, y.
+      apply mkPreservesCompo.
+      * intros x y z n c. 
+        case (decpaths_nat x y); intro H.
+        case (decpaths_nat y z); intro H'.
+        (* issue with dependent pattern matching *)
+        admit.
+        match goal with | |- ?T =>
+                          refine (@empty_is_false_fun _ _ n c (fun c => T))  end. 
+        refine (prod_empty_R (ωS1[tt,tt][x,y]).1 (ωS1[tt,tt][y,z]).1 _).
+        apply (transport_hom (eq_sym (CGS1_neq_empty H')) eq_refl (GId _)).
+        match goal with | |- ?T =>
+                          refine (@empty_is_false_fun _ _ n c (fun c => T))  end. 
+        refine (prod_empty_L (ωS1[tt,tt][x,y]).1 (ωS1[tt,tt][y,z]).1 _).
+        apply (transport_hom (eq_sym (CGS1_neq_empty H)) eq_refl (GId _)).
+      * intros x y. case (decpaths_nat x y); intro H.
+        (* issue with dependent pattern matching *)
+        admit.
+        refine (path_preservesCompo' (CGS1_neq_empty H) _ _).
+        apply preservesCompo_empty_dom. 
+  -  apply mkPreservesId.
+     + intros x. reflexivity.
+     + intros x y. destruct x, y. apply mkPreservesId.
+       * intros. unfold identity; simpl. admit.
+       * intros. admit.
+Defined. 
 
 Definition S1_rec (P : Type) (b : P) (l : b = b) : S1 -> P :=
   app (ψ (@_S1_rec P b l)).1.
@@ -220,107 +268,3 @@ Definition S1_rec_beta_loop (P : Type) (b : P) (l : b = b) :
 Definition S1_ind (P : S1 -> Type) (b : P base) (l : loop # b = b)
 : ∀ (x:S1), P x.
 Abort.
-
-
-
-(* CoFixpoint ω_eq_refl_compo T U V x y f : *)
-(*   commutativeSquare (CGterminal**CGterminal) CGterminal *)
-(*                     (hom' (piω T) x x ** hom' (piω U) y y) (hom' (piω V) (f x y) (f x y)) _ *)
-(*                     compo (prod_hom' (ω_eq_refl eq_refl) (ω_eq_refl eq_refl)) *)
-(*                     compo (ω_eq_refl eq_refl). *)
-(* refine (mkCommutativeSquare _ _ _ _ _ _). *)
-(* - reflexivity. *)
-(* - intros [a a'] [b b']. destruct a, a', b ,b'.  *)
-(*   match goal with | |- commutativeSquare _ _ _ _ _ _ _ ?F _ => *)
-(*                         assert (F = *)
-(*           (piComp_V_ *)
-(*            (λ (X : x = x) (X' : y = y), *)
-(*             equal_f (λ _ : U, V) (ap f X) y @ ap (f x) X') eq_refl eq_refl *)
-(*            eq_refl eq_refl)) end.  *)
-(*   admit. *)
-(*   rewrite H. *)
-(*   exact (@ω_eq_refl_compo (x = x) (y =y) (f x y = f x y) *)
-(*                           eq_refl eq_refl (@ap2 _ _ _ f x x y y)). *)
-(* Defined. *)
-
-(* CoFixpoint ω_eq_refl_compo' T x : *)
-(*   commutativeSquare (CGterminal**CGterminal) CGterminal *)
-(*                     (hom' (piω T) x x ** hom' (piω T) x x) (hom' (piω T) x x) _ *)
-(*                     compo (prod_hom' (ω_eq_refl eq_refl) (ω_eq_refl eq_refl)) *)
-(*                     compo (ω_eq_refl eq_refl). *)
-(* refine (mkCommutativeSquare _ _ _ _ _ _). *)
-(* - reflexivity. *)
-(* - intros [a a'] [b b']. destruct a, a', b ,b'.  *)
-(*   pose (@ω_eq_refl_compo' (x = x) eq_refl).  *)
-(*   match goal with | |- commutativeSquare _ _ _ _ _ _ _ ?F _ => *)
-(*                         assert (F = compo) end. *)
-(*   admit. *)
-(*   rewrite H.  *)
-(*   admit. *)
-(* Defined. *)
-
-(* Definition ω_eq_refl_functor T (x y :T) (e:x=y) : *)
-(*   IsωFunctor CGterminal (ω_eq_refl e) _. *)
-(*   split. *)
-(*   - destruct e. generalize dependent T. cofix ω_eq_refl_preservesCompo. intros. *)
-(*     apply mkPreservesCompo. intros a b c; destruct a, b, c. *)
-(*     pose (@ω_eq_refl_compo' (x=x) eq_refl). *)
-(*     simpl in *. exact c. *)
-(*     intros a b. destruct a, b. apply ω_eq_refl_preservesCompo. *)
-(*   - destruct e. generalize dependent T. cofix ω_eq_refl_preservesId. intros. *)
-(*     apply mkPreservesId. intros a; destruct a. *)
-(*     reflexivity. intros a b. destruct a, b.  apply ω_eq_refl_preservesId. *)
-(* Defined. *)
-
-
-  (* split. *)
-  (* - apply mkPreservesCompo. intros x y z; destruct x, y, z.  *)
-  (* refine (mkCommutativeSquare _ _ _ _ _ _). *)
-  (* + destruct x as [m n]. exact (n_loop_plus l m n).  *)
-  (* + intros [n m] [n' m']. *)
-  (*   pose (decpaths_nat n n'). case d. intro e. destruct e. *)
-  (*   pose (decpaths_nat m m'). case d0. intro e. destruct e. simpl. *)
-  (*   refine (@path_commutativeSquare _ _ _ _ (CGterminal ** CGterminal) CGterminal _ _ *)
-  (*          _ _ _ _ _ _ _ eq_refl eq_refl _).  *)
-  (*   * exact (path_product (CGS1_eq_terminal (eq_refl n)) (CGS1_eq_terminal (eq_refl m))). *)
-  (*   * exact (CGS1_eq_terminal (eq_refl _)). *)
-  (*   * match goal with | |- commutativeSquare _ _ _ _ _ _ _ _ ?f => *)
-  (*                       assert (f = ω_eq_refl eq_refl) end. *)
-  (*     etransitivity; try apply (transport_hom_CGS1 ( piW (n_loop l (n + m) = n_loop l (n + m))) (eq_refl (n+m))). apply ap. Opaque CGS1_eq_terminal. simpl. *)
-  (*     pose (decpaths_nat_refl (n+m)). admit. *)
-  (*     rewrite H. pose (ω_eq_refl_compo (n_loop l n) (n_loop l m) concat). *)
-  (*     refine (@path_commutativeSquare _ _ _ _ (CGterminal ** CGterminal) CGterminal _ _ *)
-  (*                                     _ _ _ _ _ eq_refl eq_refl eq_refl _ _). *)
-  (*     Focus 2. rewrite <- n_loop_plus. reflexivity. *)
-  (*     admit. *)
-  (*   * intro e. refine (@path_commutativeSquare _ _ _ _ (CGterminal ** CGempty) _ _ _ *)
-  (*          _ _ _ _ _ _ eq_refl eq_refl eq_refl _). *)
-  (*     exact (path_product (CGS1_eq_terminal (eq_refl n)) (CGS1_neq_empty e)). *)
-  (*     apply commutativeSquare_emptyR. *)
-  (*   * intro e. refine (@path_commutativeSquare _ _ _ _ (CGempty ** ((ωS1 [tt, tt]) [m,m']).1) *)
-  (*                                              _ _ _ _ _ _ _ _ _ eq_refl eq_refl eq_refl _). *)
-  (*     exact (path_product (B := ((ωS1 [tt, tt]) [m,m']).1) (CGS1_neq_empty e) eq_refl). *)
-  (*     apply commutativeSquare_emptyL. *)
-  (* + intros. destruct x, y. *)
-  (*   apply mkPreservesCompo. intros n m p. *)
-  (*   pose (decpaths_nat n m). case d. intro e. destruct e. *)
-  (*   pose (decpaths_nat n p). case d0. intro e. destruct e. *)
-  (*   refine (@path_commutativeSquare _ _ _ _ (CGterminal ** CGterminal) CGterminal _ _ *)
-  (*          _ _ _ _ _ _ _ eq_refl eq_refl _).  *)
-  (*   * exact (path_product (CGS1_eq_terminal (eq_refl n)) (CGS1_eq_terminal (eq_refl n))). *)
-  (*   * exact (CGS1_eq_terminal (eq_refl _)). *)
-  (*   * simpl. admit. *)
-  (*   *  intro e. refine (@path_commutativeSquare _ _ _ _ (CGterminal ** CGempty) _ _ _ *)
-  (*          _ _ _ _ _ _ eq_refl eq_refl eq_refl _). *)
-  (*     exact (path_product (CGS1_eq_terminal (eq_refl n)) (CGS1_neq_empty e)). *)
-  (*     apply commutativeSquare_emptyR. *)
-  (*   * intro e. refine (@path_commutativeSquare _ _ _ _ (CGempty ** ((ωS1 [tt, tt]) [m,p]).1) *)
-  (*                                              _ _ _ _ _ _ _ _ _ eq_refl eq_refl eq_refl _). *)
-  (*     exact (path_product (B := ((ωS1 [tt, tt]) [m,p]).1) (CGS1_neq_empty e) eq_refl). *)
-  (*     apply commutativeSquare_emptyL. *)
-  (*   * intros n m. destruct (decpaths_nat n m). destruct e.  *)
-  (*     apply mkPreservesCompo. intros. simpl in *. admit. admit. *)
-      
-  (*     rewrite decpaths_nat_refl in z. *)
-  (*     set (decpaths_nat n m). case d. intro e. destruct e. *)
-  (*     admit. admit. *)

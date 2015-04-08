@@ -10,6 +10,8 @@ Require Import Omega.
 Set Implicit Arguments.
 
 (** Inductive type for globular sets *)
+(** This corresponds to Definition 1 of the TLCA paper *)
+
 CoInductive GType : Type := mkGType : ∀ (Obj : Type), (Obj -> Obj -> GType) -> GType. 
 
 Definition objects (G : GType) : Type.
@@ -25,15 +27,14 @@ Defined.
 Reserved Notation " A ==> B " (at level 90).
 Notation " G [ A , B ]" := (hom G A B) (at level 80).
 
+
+(** Definition of morphism of globular types *)
+
 CoInductive GHom : ∀ (G H : GType), Type := 
   mkGHom : ∀ (G H : GType) (f0 : |G| -> |H|)
              (f1 : ∀ (x x' : |G|), G [x,x'] ==> H [f0 x, f0 x']),
              G ==> H
 where " A ==> B " := (GHom A B).
-
-(* identity on GTypes *)
-
-CoFixpoint GId (G:GType) : G ==> G := mkGHom G G id (fun x y => GId (G [x, y])).
 
 Definition app G H (f : G ==> H) : |G| -> |H|.
 intro x. destruct f. exact (f0 x).
@@ -47,9 +48,7 @@ Defined.
 
 Notation "f << x , x' >>" := (map f x x') (at level 80).
 
-CoFixpoint GComp  (X Y Z:GType) : X ==> Y -> Y ==> Z -> X ==> Z :=
-  fun f g => mkGHom _ _ (fun x => g @@ (f @@ x)) 
-                    (fun x x' => GComp (f << x , x' >>) (g << f @@ x, f @@ x'>>)).
+(** Definition of product of globular types (Definition 2 in TLCA paper)*)
 
 Reserved Notation "A ** B" (at level 90).
 
@@ -57,3 +56,19 @@ CoFixpoint product (G H : GType) : GType :=
   @mkGType (prod (objects G) (objects H)) 
          (fun xy xy' => G [fst xy, fst xy'] ** H [snd xy, snd xy'])
 where "A ** B"  := (product A B).
+
+(* composition of morphisms of GTypes *)
+
+CoFixpoint GComp  (X Y Z:GType) : X ==> Y -> Y ==> Z -> X ==> Z :=
+  fun f g => mkGHom _ _ (fun x => g @@ (f @@ x)) 
+                    (fun x x' => GComp (f << x , x' >>) (g << f @@ x, f @@ x'>>)).
+
+(* identity on GTypes *)
+
+CoFixpoint GId (G:GType) : G ==> G := mkGHom G G id (fun x y => GId (G [x, y])).
+
+(* Definition of the terminal globular type *)
+
+CoFixpoint Delta (X0 : Type) : GType := @mkGType X0 (fun _ _ => Delta X0).
+
+Definition terminal : GType := Delta unit.
