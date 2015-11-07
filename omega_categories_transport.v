@@ -1,6 +1,6 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
-Require Import path GType omega_categories. 
+Require Import OmegaCategories.path OmegaCategories.GType OmegaCategories.omega_categories. 
 
 (** a stronger notion of commutative diagrams **)
 (** which is used to construct the fundamental groupoid **)

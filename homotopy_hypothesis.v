@@ -1,7 +1,7 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
-Require Import Omega Integers truncation. 
-Require Import path GType omega_cat_examples type_to_omega_cat omega_categories omega_categories_transport. 
+Require Import Omega OmegaCategories.Integers OmegaCategories.truncation. 
+Require Import OmegaCategories.path OmegaCategories.GType OmegaCategories.omega_cat_examples OmegaCategories.type_to_omega_cat OmegaCategories.omega_categories OmegaCategories.omega_categories_transport. 
 
 Set Implicit Arguments.
 
@@ -136,7 +136,7 @@ Definition _S1_rec (P : Type) (b : P) (l : b = b) :
      + intros x y. destruct x, y. apply mkPreservesId.
        * intros. unfold identity; simpl. admit.
        * intros. admit.
-Defined. 
+Admitted. 
 
 (* Constructor L(S_1)_rec of Theorem 14*)
 

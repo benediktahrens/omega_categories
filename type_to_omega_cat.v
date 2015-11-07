@@ -2,7 +2,7 @@ Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import BinInt Even List Heap Le Plus Minus.
 Require Import Omega. 
-Require Import path GType omega_categories omega_categories_transport. 
+Require Import OmegaCategories.path OmegaCategories.GType OmegaCategories.omega_categories OmegaCategories.omega_categories_transport. 
 
 Set Implicit Arguments.
 

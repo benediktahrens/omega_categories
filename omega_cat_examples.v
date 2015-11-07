@@ -1,7 +1,7 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import Omega BinInt. 
-Require Import path GType omega_categories omega_categories_transport type_to_omega_cat Integers. 
+Require Import OmegaCategories.path OmegaCategories.GType OmegaCategories.omega_categories OmegaCategories.omega_categories_transport OmegaCategories.type_to_omega_cat OmegaCategories.Integers. 
 
 Set Implicit Arguments.
 

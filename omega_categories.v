@@ -1,6 +1,6 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
-Require Import path GType. 
+Require Import OmegaCategories.path OmegaCategories.GType. 
 
 Set Implicit Arguments.
 

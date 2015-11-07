@@ -1,7 +1,7 @@
 Add LoadPath "." as OmegaCategories.
 Require Export Unicode.Utf8_core.
 Require Import Vector.
-Require Export path.
+Require Export OmegaCategories.path.
 
 Set Universes Polymorphic.
 Set Implicit Arguments.
